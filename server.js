@@ -46,6 +46,8 @@ router.get('/', function(req, res) {
 	res.json({message: 'yay!! welcome to the api!'});
 });
 
+//===========================================================
+
 // Routes that end in current_workflow_runs
 // all current workflow runs
 router.get('/current_workflow_runs', function(req, res) {
@@ -54,6 +56,7 @@ router.get('/current_workflow_runs', function(req, res) {
 		res.json(docs);
 	});
 });
+
 
 // project_info
 // all projects
@@ -237,6 +240,100 @@ router.get('/workflow_info/:_id/files', function(req, res) {
 		});
 	}
 });
+//========================================================
+//run_details
+
+						//if run name not given
+router.get('/run_details', function(req, res) {
+		res.status(400).send({error:"no sequencer run name given"});
+});
+
+//per one run name
+router.get('/run_details/:_id', function(req, res) {
+	if (req.params._id) {
+		library_info.aggregate
+([
+    { $match: {RunInfo_name:req.params._id}},
+   { $lookup: {
+        from: "QC",
+        localField: "iusswid",
+        foreignField: "iusswid",
+        as: "qc" }},
+     { $unwind: {path: "$qc", preserveNullAndEmptyArrays: true}},
+    { $group: {
+        _id: {					//combines the reruns of the same iusswid
+            iusswid: "$iusswid",
+            lane: "$lane",
+            library_name:"$library_name"},
+        "yield": {$sum: "$qc.Yield"},
+        "reads": {$sum: "$qc.Reads"},
+        "lane": {$first: "$lane"},
+	"library_name": {$first: "$library_name"},
+        "qc": {$push: "$qc"}}},
+    { $project: {
+        "hasQC": {$cond: {if:{ $eq:["$yield",0]},//for determining status
+				then: 0,
+				else: 1}},
+        "yield": 1,
+        "reads": 1,
+        "lane": 1,
+        "library_name": 1,
+        "qc": 1}},
+    { $group: {
+        _id: "$lane",				//separates acording to the lane
+        "libraryCount": {$sum: 1},
+        "yieldSum": {$sum: "$yield"},
+        "readsSum": {$sum: "$reads"},
+        "sumHasQC": {$sum: "$hasQC"},
+        "libraries": {$push: {libraryName: "$library_name", qc: "$qc"}} }},
+    { $sort: {_id: 1}},
+     { $group: {
+        _id: req.params._id,
+        "lanes": {$push:{
+            lane: "$_id",
+            libraryCount: "$libraryCount",
+            yieldSum: "$yieldSum",
+            readsSum: "$readsSum",
+            "laneQCStatus": {$cond: {if:{ $lt:["$sumHasQC","$libraryCount"]},
+				then: "in progress",
+				else: "complete"}},
+            "laneCompleteQC": {$cond: {if:{ $lt:["$sumHasQC","$libraryCount"]},
+				then: 0,
+				else: 1}},
+            libraries: "$libraries"}},
+        "laneSum": {$sum: 1},
+        "total yield sum": {$sum: "$yieldSum"},
+        "total reads sum": {$sum: "$readsSum"},
+        }},
+    { $lookup: {
+        from: "RunInfo",			//incorporates run status
+        localField: "_id",
+        foreignField: "run_name",
+        as: "runstatus" }},
+    { $unwind: {path:"$runstatus", preserveNullAndEmptyArrays: true}},
+    { $project: {
+        "_id": 1,
+        "runStatus": "$runstatus.status",
+        "TotalLibraries": {$sum: "$lanes.libraryCount"},
+        "total yield sum": 1,
+        "total reads sum": 1,
+        "statusSum":1,
+        "runQCStatus":  {$cond: {if:{ $eq:[{$sum: "$lanes.laneCompleteQC"},"$laneSum"]},
+				then: "completed",
+				else: "in progress"}},
+        "lanes": 1}}
+        ],
+	function(err, docs) {
+			if (err) throw err;
+			if (typeof docs[0] !== 'undefined') {
+				res.json(docs);
+			} else {
+						//incorrect run name
+				res.status(404).send({error:"sequencer run name not found"});
+			}
+		});
+	}
+});
 
 // ========================================================
 // Register routes
@@ -258,3 +355,4 @@ function findById(_id, collection) {
 		});
 	}
 }
+

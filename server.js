@@ -253,8 +253,8 @@ if (req.params._id) {
 ([
     { $match: {RunInfo_name:req.params._id}},
     { $group: {
-        _id: req.params._id,
-        projectSummary: {$addToSet: "$ProjectInfo_name"},//finds all the projects in the run
+        _id: run,
+        projectSummary: {$addToSet: "$project_info_name"},
         librarySummary: {$addToSet: "$library_type"},
         tissueSummary: {$addToSet: "$tissue_type"},
         origin: {$push: "$$ROOT"} }},
@@ -262,9 +262,9 @@ if (req.params._id) {
     { $unwind: {path:"$librarySummary", preserveNullAndEmptyArrays: true}},
     { $unwind: {path:"$tissueSummary", preserveNullAndEmptyArrays: true}},
     { $unwind: {path: "$origin", preserveNullAndEmptyArrays: true}},
-    { $project: {
+    { $project: { 
          _id: 0,
-         projectSum: {$cond: {if:{ $eq:["$projectSummary","$origin.ProjectInfo_name"]},
+         projectSum: {$cond: {if:{ $eq:["$projectSummary","$origin.project_info_name"]},
                             then: 1,
                             else: 0}},
          librarySum: {$cond: {if:{ $eq:["$librarySummary","$origin.library_type"]},
@@ -277,41 +277,38 @@ if (req.params._id) {
          librarySummary: 1,
          tissueSummary:1}},
     { $group: {
-        _id: {
-	    projectSummary: "$projectSummary",
-	    tissueSummary: "$tissueSummary",
-	    librarySummary: "$librarySummary"},
+        _id: { projectSummary: "$projectSummary", tissueSummary: "$tissueSummary", librarySummary: "$librarySummary"},
         projectTotal: { $sum: "$projectSum" },
         libraryTotal: { $sum: "$librarySum"},
         tissueTotal: { $sum: "$tissueSum" },
         libraryCount: {$sum: 1} }},
     { $group: {
         _id:req.params._id,
-        libraryCount: {$first: "$libraryCount"},
-        projectSummary: { $addToSet: {
-            projectCode: "$_id.projectSummary",
+        library_count: {$first: "$libraryCount"},
+        project_summary: { $addToSet: {
+            projectCode: "$_id.projectSummary", 
             total: "$projectTotal" }},
-        librarySummary: { $addToSet: {
-            libraryType: "$_id.librarySummary",
+        library_summary: { $addToSet: {
+            libraryType: "$_id.librarySummary", 
             total: "$libraryTotal" }},
-        tissueSummary: { $addToSet: {
-            tissueType: "$_id.tissueSummary",
+        tissue_summary: { $addToSet: {
+            tissueType: "$_id.tissueSummary", 
             total: "$tissueTotal" }} }},
-    { $lookup: {
-        from: "RunInfo",			//incorporates run status
+    { $lookup: { 
+        from: "RunInfo",            //incorporates run status
         localField: "_id",
         foreignField: "run_name",
         as: "runstatus" }},
     { $unwind: {path:"$runstatus", preserveNullAndEmptyArrays: true}},
     { $project: {
         _id: 0,
-        runName: "$_id",
+        run_name: "$_id",
         status: "$runstatus.status",
         start: "$runstatus.start_tstmp",
-        libraryCount: 1,
-        projectSummary: 1,
-        librarySummary: 1,
-        tissueSummary: 1 }}
+        library_count: 1,
+        project_summary: 1,
+        library_summary: 1,
+        tissue_summary: 1 }}
         ],
 	function(err, docs) {
 			if (err) throw err;
@@ -335,52 +332,43 @@ router.get('/run_workflows/:_id', function(req, res) {
 	if (req.params._id) {
 		library_info.aggregate
 ([
-    { $match: {RunInfo_name:req.params._id}},
+    { $match: {run_info_name:req.params._id}},
     { $group: {
-        _id: req.params._id,
+        _id: run,
         origin: {$push: "$$ROOT"} }},
     { $unwind: {path: "$origin", preserveNullAndEmptyArrays: true}},
-    { $sort: {"origin.lane": 1, "origin.library_name": 1}},
-    { $limit: 10},				//only works with the first 10 libraries
-    { $unwind: {path: "$origin.WorkflowInfo_accession", preserveNullAndEmptyArrays: true}},
+    { $unwind: {path: "$origin.workflowinfo_accession", preserveNullAndEmptyArrays: true}},
     { $lookup: {
         from: "WorkflowInfo",
-        localField: "origin.WorkflowInfo_accession",
+        localField: "origin.workflowinfo_accession",
         foreignField: "sw_accession",
         as: "workflows" }},
      { $unwind: {path: "$workflows", preserveNullAndEmptyArrays: true}},
      { $lookup: {
         from: "FileInfo",
-        localField: "origin.WorkflowInfo_accession",
-        foreignField: "WorkflowInfo_accession",
+        localField: "origin.workflowinfo_accession",
+        foreignField: "workflowinfo_accession",
         as: "files" }},
-     { $unwind: {path: "$files", preserveNullAndEmptyArrays: true}},
+     { $unwind: {path: "$files", preserveNullAndEmptyArrays: true}}, 
      { $group: {
-         _id: { accession:"$origin.WorkflowInfo_accession", iusswid: "$origin.iusswid"},
+         _id: { accession:"$origin.workflowinfo_accession", iusswid: "$origin.iusswid"},
          files: {$first: "$files"},
          "fileSum": {$sum: 1},
          workflows: {$first: "$workflows"},
          origin: {$first: "$origin"} }},
-     { $group: {
+     { $group: { 
          _id: "$origin.iusswid",
-         origin: {$first: "$origin"},
-         workflowCount: {$sum: 1},
-         workflows: {$push: {
-             "WorkflowInfo": "$workflows",
-             "fileCount": {$cond: {if:{ $eq:["$files",null]},
-				then: 0,	//if there are no files for the workflow
-				else: "$fileSum"}}
+         library_name: {$first:"$origin.library_name"},
+         lane: {$first: "$origin.lane"},
+         barcode: {$first: "$origin.barcode"},
+         tissue_type: {$first: "$origin.tissue_type"}, 
+         workflow_count: {$sum: 1},
+         workflows: {$push: { 
+             "workflow_info": "$workflows",
+             "file_count": {$cond: {if:{ $eq:["$files",null]},
+                then: 0,
+                else: "$fileSum"}}
               }} }},
-    { $group: {
-        _id:req.params._id,
-        libraryCount: {$sum: 1},
-        libraries: {$push: {
-            library_name: "$origin.library_name",
-             lane: "$origin.lane",
-             barcode: "$origin.barcode",
-             tissue_type: "$origin.tissue_type",
-             workflowCount: "$workflowCount",
-             workflows: "$workflows"}} }},
     { $sort: {"lane": 1, "libraries.library_name": 1}}
         ],
 	function(err, docs) {
@@ -401,53 +389,46 @@ router.get('/run_workflows/:_id/:start', function(req, res) {
 	req.params.start=parseInt(req.params.start);
 		library_info.aggregate
 ([
-    { $match: {RunInfo_name:req.params._id}},
+    { $match: {run_info_name:req.params._id}},
     { $group: {
-        _id: req.params._id,
+        _id: run,
         origin: {$push: "$$ROOT"} }},
     { $unwind: {path: "$origin", preserveNullAndEmptyArrays: true}},
     { $sort: {"origin.lane": 1, "origin.library_name": 1}},
     { $skip: req.params.start},
     { $limit: 10},
-    { $unwind: {path: "$origin.WorkflowInfo_accession", preserveNullAndEmptyArrays: true}},
+    { $unwind: {path: "$origin.workflowinfo_accession", preserveNullAndEmptyArrays: true}},
     { $lookup: {
         from: "WorkflowInfo",
-        localField: "origin.WorkflowInfo_accession",
+        localField: "origin.workflowinfo_accession",
         foreignField: "sw_accession",
         as: "workflows" }},
      { $unwind: {path: "$workflows", preserveNullAndEmptyArrays: true}},
      { $lookup: {
         from: "FileInfo",
-        localField: "origin.WorkflowInfo_accession",
-        foreignField: "WorkflowInfo_accession",
+        localField: "origin.workflowinfo_accession",
+        foreignField: "workflowinfo_accession",
         as: "files" }},
-     { $unwind: {path: "$files", preserveNullAndEmptyArrays: true}},
+     { $unwind: {path: "$files", preserveNullAndEmptyArrays: true}}, 
      { $group: {
-         _id: { accession:"$origin.WorkflowInfo_accession", iusswid: "$origin.iusswid"},
+         _id: { accession:"$origin.workflowinfo_accession", iusswid: "$origin.iusswid"},
          files: {$first: "$files"},
          "fileSum": {$sum: 1},
          workflows: {$first: "$workflows"},
          origin: {$first: "$origin"} }},
-     { $group: {
+     { $group: { 
          _id: "$origin.iusswid",
-         origin: {$first: "$origin"},
-         workflowCount: {$sum: 1},
-         workflows: {$push: {
-             "WorkflowInfo": "$workflows",
-             "fileCount": {$cond: {if:{ $eq:["$files",null]},
-				then: 0,
-				else: "$fileSum"}}
+         library_name: {$first:"$origin.library_name"},
+         lane: {$first: "$origin.lane"},
+         barcode: {$first: "$origin.barcode"},
+         tissue_type: {$first: "$origin.tissue_type"}, 
+         workflow_count: {$sum: 1},
+         workflows: {$push: { 
+             "workflow_info": "$workflows",
+             "file_count": {$cond: {if:{ $eq:["$files",null]},
+                then: 0,
+                else: "$fileSum"}}
               }} }},
-    { $group: {
-        _id:req.params._id,
-        libraryCount: {$sum: 1},
-        libraries: {$push: {
-            library_name: "$origin.library_name",
-             lane: "$origin.lane",
-             barcode: "$origin.barcode",
-             tissue_type: "$origin.tissue_type",
-             workflowCount: "$workflowCount",
-             workflows: "$workflows"}} }},
     { $sort: {"lane": 1, "libraries.library_name": 1}}
         ],
 	function(err, docs) {
@@ -473,74 +454,73 @@ router.get('/run_details/:_id', function(req, res) {
 	if (req.params._id) {
 		library_info.aggregate
 ([
-    { $match: {RunInfo_name:req.params._id}},
-   { $lookup: {
+    { $match: {run_info_name:req.params._id}},
+    { $lookup: {
         from: "QC",
         localField: "iusswid",
         foreignField: "iusswid",
         as: "qc" }},
-     { $unwind: {path: "$qc", preserveNullAndEmptyArrays: true}},
+    { $unwind: {path: "$qc", preserveNullAndEmptyArrays: true}},
     { $group: {
-        _id: {					//combines the reruns of the same iusswid
+        _id: {                  //combines the reruns of the same iusswid
             iusswid: "$iusswid",
             lane: "$lane",
             library_name:"$library_name"},
-        "yield": {$sum: "$qc.Yield"},
-        "reads": {$sum: "$qc.Reads"},
+        "yield": {$sum: "$qc.yield"},
+        "reads": {$sum: "$qc.reads"},
         "lane": {$first: "$lane"},
-	"library_name": {$first: "$library_name"},
+    "library_name": {$first: "$library_name"},
         "qc": {$push: "$qc"}}},
     { $project: {
-        "hasQC": {$cond: {if:{ $eq:["$yield",0]},//for determining status
-				then: 0,
-				else: 1}},
+        "has_qc": {$cond: {if:{ $eq:["$yield",0]},//for determining status
+                then: 0,
+                else: 1}},
         "yield": 1,
         "reads": 1,
         "lane": 1,
         "library_name": 1,
         "qc": 1}},
     { $group: {
-        _id: "$lane",				//separates acording to the lane
-        "libraryCount": {$sum: 1},
-        "yieldSum": {$sum: "$yield"},
-        "readsSum": {$sum: "$reads"},
-        "sumHasQC": {$sum: "$hasQC"},
-        "libraries": {$push: {libraryName: "$library_name", qc: "$qc"}} }},
+        _id: "$lane",               //separates acording to the lane
+        "library_count": {$sum: 1},
+        "yield_sum": {$sum: "$yield"},
+        "reads_sum": {$sum: "$reads"},
+        "sum_has_qc": {$sum: "$has_qc"},
+        "libraries": {$push: {library_name: "$library_name", qc: "$qc"}} }},
     { $sort: {_id: 1}},
      { $group: {
         _id: req.params._id,
         "lanes": {$push:{
             lane: "$_id",
-            libraryCount: "$libraryCount",
-            yieldSum: "$yieldSum",
-            readsSum: "$readsSum",
-            "laneQCStatus": {$cond: {if:{ $lt:["$sumHasQC","$libraryCount"]},
-				then: "in progress",
-				else: "complete"}},
-            "laneCompleteQC": {$cond: {if:{ $lt:["$sumHasQC","$libraryCount"]},
-				then: 0,
-				else: 1}},
+            library_count: "$library_count",
+            yield_sum: "$yield_sum",
+            reads_sum: "$reads_sum",
+            "lane_qc_status": {$cond: {if:{ $lt:["$sum_has_qc","$library_count"]},
+                then: "in progress",
+                else: "complete"}},
+            "lane_complete_qc": {$cond: {if:{ $lt:["$sum_has_qc","$library_count"]},
+                then: 0,
+                else: 1}},
             libraries: "$libraries"}},
-        "laneSum": {$sum: 1},
-        "total yield sum": {$sum: "$yieldSum"},
-        "total reads sum": {$sum: "$readsSum"},
+        "lane_sum": {$sum: 1},
+        "total_yield_sum": {$sum: "$yield_sum"},
+        "total_reads_sum": {$sum: "$reads_sum"},
         }},
     { $lookup: {
-        from: "RunInfo",			//incorporates run status
+        from: "RunInfo",            //incorporates run status
         localField: "_id",
         foreignField: "run_name",
         as: "runstatus" }},
     { $unwind: {path:"$runstatus", preserveNullAndEmptyArrays: true}},
     { $project: {
         "_id": 1,
-        "runStatus": "$runstatus.status",
-        "TotalLibraries": {$sum: "$lanes.libraryCount"},
-        "total yield sum": 1,
-        "total reads sum": 1,
-        "statusSum":1,
-        "runQCStatus":  {$cond: {if:{ $eq:[{$sum: "$lanes.laneCompleteQC"},"$laneSum"]},
-				then: "completed",
-				else: "in progress"}},
+        "run_status": "$runstatus.status",
+        "total_libraries": {$sum: "$lanes.library_count"},
+        "total_yield_sum": 1,
+        "total_reads_sum": 1,
+        "run_qc_status":  {$cond: {if:{ $eq:[{$sum: "$lanes.lane_complete_qc"},"$lane_sum"]},
+                then: "completed",
+                else: "in progress"}},
         "lanes": 1}}
         ],
 	function(err, docs) {

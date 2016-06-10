@@ -561,6 +561,205 @@ router.get('/run_details/:_id', function(req, res) {
 	}
 });
 
+//donor_workflows
+                        //if donor name not given
+router.get('/donor_workflows', function(req, res) {
+        res.status(400).send({error:"no donor name given"});
+});
+
+//per one run name
+router.get('/donor_workflows/:_id', function(req, res) {
+    if (req.params._id) {
+        library_info.aggregate
+([
+    { $match: {donor_info_name:req.params._id}},
+    { $group: {
+        _id: req.params._id,
+        origin: {$push: "$$ROOT"} }},
+    { $unwind: {path: "$origin", preserveNullAndEmptyArrays: true}},
+    { $unwind: {path: "$origin.workflowinfo_accession", preserveNullAndEmptyArrays: true}},
+    { $lookup: {
+        from: "WorkflowInfo",
+        localField: "origin.workflowinfo_accession",
+        foreignField: "sw_accession",
+        as: "workflows" }},
+     { $unwind: {path: "$workflows", preserveNullAndEmptyArrays: true}},
+     { $lookup: {
+        from: "FileInfo",
+        localField: "origin.workflowinfo_accession",
+        foreignField: "workflowinfo_accession",
+        as: "files" }},
+     { $unwind: {path: "$files", preserveNullAndEmptyArrays: true}}, 
+     { $group: {
+         _id: { accession:"$origin.workflowinfo_accession", iusswid: "$origin.iusswid"},
+         files: {$first: "$files"},
+         "fileSum": {$sum: 1},
+         workflows: {$first: "$workflows"},
+         origin: {$first: "$origin"} }},
+     { $group: { 
+         _id: "$origin.iusswid",
+         library_name: {$first:"$origin.library_name"},
+         lane: {$first: "$origin.lane"},
+         barcode: {$first: "$origin.barcode"},
+         run_name: {$first: "$origin.run_info_name"}, 
+         workflow_count: {$sum: 1},
+         workflows: {$push: { 
+             "workflow_name": "$workflows.workflow_name",
+             "analysis_type": "$workflows.analysis_type",
+             "start_date": "$workflows.start_tstmp",
+             "end_date": "$workflows.end_tstmp",
+             "file_count": {$cond: {if:{ $eq:["$files",null]},
+                then: 0,
+                else: "$fileSum"}}
+              }} }},
+    { $sort: {"lane": 1, "libraries.library_name": 1}}
+        ],
+    function(err, docs) {
+            if (err) throw err;
+            if (typeof docs[0] !== 'undefined') {
+                res.json(docs);
+            } else {
+                        //incorrect run name
+                res.status(404).send({error:"donor name not found"});
+            }
+        });
+    }
+});
+
+//donor_workflows summary
+                        //if donor name not given
+router.get('/donor_summary', function(req, res) {
+        res.status(400).send({error:"no donor name given"});
+});
+
+//per one run name
+router.get('/donor_summary/:_id', function(req, res) {
+    if (req.params._id) {
+        library_info.aggregate
+([
+    { $match: {donor_info_name:req.params._id}},
+    { $group: {
+        _id: req.params._id,
+        librarySummary: {$addToSet: "$library_type"},
+        tissueSummary: {$addToSet: "$tissue_type"},
+        origin: {$push: "$$ROOT"} }},
+    { $unwind: {path:"$librarySummary", preserveNullAndEmptyArrays: true}},
+    { $unwind: {path:"$tissueSummary", preserveNullAndEmptyArrays: true}},
+    { $unwind: {path: "$origin", preserveNullAndEmptyArrays: true}},
+    { $project: {
+         _id: 0,
+         librarySum: {$cond: {if:{ $eq:["$librarySummary","$origin.library_type"]},
+                            then: 1,
+                            else: 0}},
+         tissueSum: {$cond: {if:{ $eq:["$tissueSummary","$origin.tissue_type"]},
+                            then: 1,
+                            else: 0}},
+         run_name: "$origin.run_info_name",
+         librarySummary: 1,
+         tissueSummary:1}},
+    { $group: {
+        _id: {
+        tissueSummary: "$tissueSummary",
+        librarySummary: "$librarySummary"},
+        libraryTotal: { $sum: "$librarySum"},
+        tissueTotal: { $sum: "$tissueSum" },
+        run_name: {$first: "$run_name"},
+        libraryCount: {$sum: 1} }},
+    { $group: {
+        _id:req.params._id,
+        library_count: {$first: "$libraryCount"},
+        run_name: {$first: "$run_name"},
+        library_summary: { $addToSet: {
+            libraryType: "$_id.librarySummary",
+            total: "$libraryTotal" }},
+        tissue_summary: { $addToSet: {
+            tissueType: "$_id.tissueSummary",
+            total: "$tissueTotal" }} }},
+    { $lookup: {
+        from: "RunInfo",
+        localField: "run_name",
+        foreignField: "run_name",
+        as: "runstatus" }},
+    { $unwind: {path:"$runstatus", preserveNullAndEmptyArrays: true}},
+    { $lookup: {
+        from: "DonorInfo",
+        localField: "_id",
+        foreignField: "donor_name",
+        as: "donorDetails" }},
+    { $unwind: {path:"$donorDetails", preserveNullAndEmptyArrays: true}},
+    { $project: {
+        _id: 0,
+        donor_name: "$_id",
+        institute: "$donorDetails.institute",
+        status: "$runstatus.status",
+        start: { $min: "$runstatus.start_tstmp"},
+        end: { $max: "$runstatus.end_tstmp"},
+        library_count: 1,
+        library_summary: 1,
+        tissue_summary: 1 }}
+    ],
+    function(err, docs) {
+            if (err) throw err;
+            if (typeof docs[0] !== 'undefined') {
+                res.json(docs);
+            } else {
+                        //incorrect run name
+                res.status(404).send({error:"donor name not found"});
+            }
+        });
+    }
+});
+
+//donor_details
+                        //if donor name not given
+router.get('/donor_details', function(req, res) {
+        res.status(400).send({error:"no donor name given"});
+});
+
+//per one run name
+router.get('/donor_details/:_id', function(req, res) {
+    if (req.params._id) {
+        library_info.aggregate
+([
+    { $match: {donor_info_name:req.params._id}},
+    { $lookup: {
+        from: "QC",
+        localField: "iusswid",
+        foreignField: "iusswid",
+        as: "details" }},
+    { $unwind: {path: "$details", preserveNullAndEmptyArrays: true}},
+    { $group: {
+        _id: "$details.type",
+        donor_info_name: {$first: "$donor_info_name"},
+        qc_table: {$push: {
+            library_name: "$library_name",
+            iusswid: "$iusswid",
+            barcode: "$barcode",
+            qc: "$details" }} }},
+    { $lookup: {
+        from: "DonorInfo",
+        localField: "donor_info_name",
+        foreignField: "donor_name",
+        as: "external" }},
+    { $unwind: {path: "$external", preserveNullAndEmptyArrays: true}},
+    { $group: {
+        _id: "$donor_info_name",
+        external_id: {$first: "$external.external_name"},
+        tables: {$push: {
+            library_type: "$_id",
+            qc_table: "$qc_table" }} }}
+    ],
+    function(err, docs) {
+            if (err) throw err;
+            if (typeof docs[0] !== 'undefined') {
+                res.json(docs);
+            } else {
+                        //incorrect run name
+                res.status(404).send({error:"donor name not found"});
+            }
+        });
+    }
+});
 // ========================================================
 // Register routes
 app.use('/api', router);

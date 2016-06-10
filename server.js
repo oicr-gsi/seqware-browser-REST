@@ -455,12 +455,12 @@ router.get('/run_details/:_id', function(req, res) {
 		library_info.aggregate
 ([
     { $match: {run_info_name:req.params._id}},
-    { $lookup: {
+   { $lookup: {
         from: "QC",
         localField: "iusswid",
         foreignField: "iusswid",
         as: "qc" }},
-    { $unwind: {path: "$qc", preserveNullAndEmptyArrays: true}},
+     { $unwind: {path: "$qc", preserveNullAndEmptyArrays: true}},
     { $group: {
         _id: {                  //combines the reruns of the same iusswid
             iusswid: "$iusswid",
@@ -469,6 +469,7 @@ router.get('/run_details/:_id', function(req, res) {
         "yield": {$sum: "$qc.yield"},
         "reads": {$sum: "$qc.reads"},
         "lane": {$first: "$lane"},
+        "run_info_name": {$first: "$run_info_name"},
     "library_name": {$first: "$library_name"},
         "qc": {$push: "$qc"}}},
     { $project: {
@@ -478,6 +479,7 @@ router.get('/run_details/:_id', function(req, res) {
         "yield": 1,
         "reads": 1,
         "lane": 1,
+        "run_info_name": 1,
         "library_name": 1,
         "qc": 1}},
     { $group: {
@@ -486,15 +488,39 @@ router.get('/run_details/:_id', function(req, res) {
         "yield_sum": {$sum: "$yield"},
         "reads_sum": {$sum: "$reads"},
         "sum_has_qc": {$sum: "$has_qc"},
+        "run_info_name": {$first: "$run_info_name"},
         "libraries": {$push: {library_name: "$library_name", qc: "$qc"}} }},
-    { $sort: {_id: 1}},
+     { $lookup: {
+        from: "RunReportData",
+        localField: "run_info_name",
+        foreignField: "run_name",
+        as: "laneinfo" }},
+     { $unwind: {path: "$laneinfo", preserveNullAndEmptyArrays: true}},
+     { $unwind: {path: "$laneinfo.lanes", preserveNullAndEmptyArrays: true}},
+     { $project: {
+        "correct_lane": {$cond: {if:{ $eq:["$_id","$laneinfo.lanes.lane"]},
+                then: 1,
+                else: 0}},          //checks if RunReportData matched the lane
+        "library_count": 1,
+        "yield_sum": 1,
+        "reads_sum": 1,
+        "sum_has_qc": 1,
+        "laneinfo": 1,
+        "libraries":1}},
+     { $match: {correct_lane: 1}},
+     { $sort: {_id: 1}},
      { $group: {
-        _id: req.params._id,
+        _id: run,
         "lanes": {$push:{
             lane: "$_id",
             library_count: "$library_count",
             yield_sum: "$yield_sum",
             reads_sum: "$reads_sum",
+            "r1_phasing" : "$laneinfo.lanes.r1_phasing",
+            "pf_pct_sequencing" : "$laneinfo.lanes.pf_pct_sequencing",
+            "r2_prephasing" : "$laneinfo.lanes.r2_prephasing",
+            "r2_phasing" : "$laneinfo.lanes.r2_phasing",
+            "r1_prephasing" : "$laneinfo.lanes.r1_prephasing",
             "lane_qc_status": {$cond: {if:{ $lt:["$sum_has_qc","$library_count"]},
                 then: "in progress",
                 else: "complete"}},

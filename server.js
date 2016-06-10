@@ -455,12 +455,12 @@ router.get('/run_details/:_id', function(req, res) {
 		library_info.aggregate
 ([
     { $match: {run_info_name:req.params._id}},
-   { $lookup: {
+    { $lookup: {
         from: "QC",
         localField: "iusswid",
         foreignField: "iusswid",
         as: "qc" }},
-     { $unwind: {path: "$qc", preserveNullAndEmptyArrays: true}},
+    { $unwind: {path: "$qc", preserveNullAndEmptyArrays: true}},
     { $group: {
         _id: {                  //combines the reruns of the same iusswid
             iusswid: "$iusswid",
@@ -498,9 +498,9 @@ router.get('/run_details/:_id', function(req, res) {
      { $unwind: {path: "$laneinfo", preserveNullAndEmptyArrays: true}},
      { $unwind: {path: "$laneinfo.lanes", preserveNullAndEmptyArrays: true}},
      { $project: {
-        "correct_lane": {$cond: {if:{ $eq:["$_id","$laneinfo.lanes.lane"]},
+        "correct_lane": {$cond: {if:{ $or: [{$eq:["$_id", "$laneinfo.lanes.lane"]},{ $lt:["$laneinfo.lanes.lane", 0]} ]},
                 then: 1,
-                else: 0}},          //checks if RunReportData matched the lane
+                else: 0}},          //checks if RunReportData matched the lane, and if the collection has a matching run name
         "library_count": 1,
         "yield_sum": 1,
         "reads_sum": 1,
@@ -510,7 +510,7 @@ router.get('/run_details/:_id', function(req, res) {
      { $match: {correct_lane: 1}},
      { $sort: {_id: 1}},
      { $group: {
-        _id: run,
+        _id: req.params._id,
         "lanes": {$push:{
             lane: "$_id",
             library_count: "$library_count",

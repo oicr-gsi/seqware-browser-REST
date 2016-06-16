@@ -242,12 +242,12 @@ router.get('/workflow_info/:_id/files', function(req, res) {
 });
 //========================================================
 //run summary
-router.get('/run_summary', function(req, res) {
+router.get('/run_workflows_summary', function(req, res) {
 		res.status(400).send({error:"no sequencer run name given"});
 });
 
 //per one run name
-router.get('/run_summary/:_id', function(req, res) {
+router.get('/run_workflows_summary/:_id', function(req, res) {
 if (req.params._id) {
 		library_info.aggregate
 ([
@@ -275,15 +275,21 @@ if (req.params._id) {
                             else: 0}},
          projectSummary: 1,
          librarySummary: 1,
-         tissueSummary:1}},
+         tissueSummary:1,
+         project_info_name: "$origin.project_info_name",
+         skip: "$origin.skip",}},
     { $group: {
         _id: { projectSummary: "$projectSummary", tissueSummary: "$tissueSummary", librarySummary: "$librarySummary"},
         projectTotal: { $sum: "$projectSum" },
         libraryTotal: { $sum: "$librarySum"},
         tissueTotal: { $sum: "$tissueSum" },
+        skipped: {$sum: "$skip"},
+        project_info_name: {$first: "$project_info_name"},
         libraryCount: {$sum: 1} }},
     { $group: {
         _id:req.params._id,
+        skipped: {$first: "$skipped"},
+        project_info_name: {$first: "$project_info_name"},
         library_count: {$first: "$libraryCount"},
         project_summary: { $addToSet: {
             projectCode: "$_id.projectSummary", 
@@ -300,11 +306,21 @@ if (req.params._id) {
         foreignField: "run_name",
         as: "runstatus" }},
     { $unwind: {path:"$runstatus", preserveNullAndEmptyArrays: true}},
+    { $lookup: {
+        from: "links",
+        localField: "project_info_name",
+        foreignField: "project_name",
+        as: "urls" }},
+    { $unwind: {path:"$urls", preserveNullAndEmptyArrays: true}},
     { $project: {
         _id: 0,
         run_name: "$_id",
         status: "$runstatus.status",
         start: "$runstatus.start_tstmp",
+        skipped: 1,
+        lims: "$urls.lims_url",
+        jira: "$urls.jira_url",
+        wiki: "$urls.wiki_url",
         library_count: 1,
         project_summary: 1,
         library_summary: 1,
@@ -469,6 +485,7 @@ router.get('/run_details/:_id', function(req, res) {
         "yield": {$sum: "$qc.yield"},
         "reads": {$sum: "$qc.reads"},
         "lane": {$first: "$lane"},
+        "project_info_name": {$first: "$project_info_name"},
         "run_info_name": {$first: "$run_info_name"},
     "library_name": {$first: "$library_name"},
         "qc": {$push: "$qc"}}},
@@ -480,6 +497,7 @@ router.get('/run_details/:_id', function(req, res) {
         "reads": 1,
         "lane": 1,
         "run_info_name": 1,
+        "project_info_name": 1,
         "library_name": 1,
         "qc": 1}},
     { $group: {
@@ -489,6 +507,7 @@ router.get('/run_details/:_id', function(req, res) {
         "reads_sum": {$sum: "$reads"},
         "sum_has_qc": {$sum: "$has_qc"},
         "run_info_name": {$first: "$run_info_name"},
+        "project_info_name": {$first: "$project_info_name"},
         "libraries": {$push: {library_name: "$library_name", qc: "$qc"}} }},
      { $lookup: {
         from: "RunReportData",
@@ -498,19 +517,20 @@ router.get('/run_details/:_id', function(req, res) {
      { $unwind: {path: "$laneinfo", preserveNullAndEmptyArrays: true}},
      { $unwind: {path: "$laneinfo.lanes", preserveNullAndEmptyArrays: true}},
      { $project: {
-        "correct_lane": {$cond: {if:{ $or: [{$eq:["$_id", "$laneinfo.lanes.lane"]},{ $lt:["$laneinfo.lanes.lane", 0]} ]},
+        "correct_lane": {$cond: {if:{ $eq:["$_id","$laneinfo.lanes.lane"]},
                 then: 1,
-                else: 0}},          //checks if RunReportData matched the lane, and if the collection has a matching run name
+                else: 0}},          //checks if RunReportData matched the lane
         "library_count": 1,
         "yield_sum": 1,
         "reads_sum": 1,
         "sum_has_qc": 1,
         "laneinfo": 1,
+        "project_info_name": 1,
         "libraries":1}},
      { $match: {correct_lane: 1}},
      { $sort: {_id: 1}},
      { $group: {
-        _id: req.params._id,
+        _id: run,
         "lanes": {$push:{
             lane: "$_id",
             library_count: "$library_count",
@@ -531,6 +551,7 @@ router.get('/run_details/:_id', function(req, res) {
         "lane_sum": {$sum: 1},
         "total_yield_sum": {$sum: "$yield_sum"},
         "total_reads_sum": {$sum: "$reads_sum"},
+        "project_info_name": {$first: "$project_info_name"},
         }},
     { $lookup: {
         from: "RunInfo",            //incorporates run status
@@ -538,12 +559,21 @@ router.get('/run_details/:_id', function(req, res) {
         foreignField: "run_name",
         as: "runstatus" }},
     { $unwind: {path:"$runstatus", preserveNullAndEmptyArrays: true}},
+    { $lookup: {
+        from: "links",
+        localField: "project_info_name",
+        foreignField: "project_name",
+        as: "urls" }},
+    { $unwind: {path:"$urls", preserveNullAndEmptyArrays: true}},
     { $project: {
         "_id": 1,
         "run_status": "$runstatus.status",
         "total_libraries": {$sum: "$lanes.library_count"},
         "total_yield_sum": 1,
         "total_reads_sum": 1,
+        "lims": "$urls.lims_url",
+        "jira": "$urls.jira_url",
+        "wiki": "$urls.wiki_url",
         "run_qc_status":  {$cond: {if:{ $eq:[{$sum: "$lanes.lane_complete_qc"},"$lane_sum"]},
                 then: "completed",
                 else: "in progress"}},
@@ -559,6 +589,151 @@ router.get('/run_details/:_id', function(req, res) {
 			}
 		});
 	}
+});
+
+//project status
+router.get('/project_status', function(req, res) {
+        res.status(400).send({error:"no project name given"});
+});
+
+//per one project name
+router.get('/project_status/:_id', function(req, res) {
+    if (req.params._id) {
+        library_info.aggregate
+([
+    {$match: {project_info_name: req.params._id }},
+    {$group: {
+        _id: "$iusswid",
+        origin: {$push: "$$ROOT"} }},
+    {$unwind: {path:"$origin", preserveNullAndEmptyArrays: true}},
+    {$unwind: {path:"$origin.workflowinfo_accession", preserveNullAndEmptyArrays: true}},
+    {$lookup: {
+        from: "WorkflowInfo",
+        localField: "origin.workflowinfo_accession",
+        foreignField: "sw_accession",
+        as: "workflows" }},
+    {$unwind: {path:"$workflows", preserveNullAndEmptyArrays: true}},
+    {$group: {
+        _id: {
+            iusswid: "$_id",
+            analysis_type: "$workflows.analysis_type",
+            status: "$workflows.status" },
+        status_count: {$sum: 1},
+        origin: {$first: "$origin"} }},
+    {$group: {
+        _id: "$_id.iusswid",
+        workflow_analysis_status: {$push: {
+               analysis_type: "$_id.analysis_type",
+               status: "$_id.status",
+               count: "$status_count"}},
+         origin: {$first: "$origin"} }},
+    {$group: {
+        _id: "$origin.donor_info_name",
+        unique_tissues: {$addToSet: "$origin.tissue_type"},
+        tissues: {$push: "$origin.tissue_type"},
+        libraries: {$push: {
+           library_name: "$origin.donor_info_name",
+           library_type: "$origin.library_type",
+           tissue_type: "$origin.tissue_type",
+           tissue_origin: "$tissue_origin",
+           workflow_analysis_status: "$workflow_analysis_status" }} }},
+    {$unwind: {path:"$unique_tissues", preserveNullAndEmptyArrays: true}},
+    {$unwind: {path:"$tissues", preserveNullAndEmptyArrays: true}},
+    {$project: {
+        _id: 1,
+        unique_tissues: 1,
+        libraries:1,
+        same_tissue: {$cond: {if:{ $eq:["$unique_tissues","$tissues"]},
+                            then: 1,
+                            else: 0}} }},
+    {$group: {
+        _id: {donor_name: "$_id", unique_tissues: "$unique_tissues" },
+        tissue_count: {$sum: "$same_tissue"},
+        libraries: {$first: "$libraries"} }},
+    {$group: {
+        _id: "$_id.donor_name",
+        tissue_types: {$push: {
+            tissue_name: "$_id.unique_tissues",
+            tissue_count: "$tissue_count" }},
+            libraries: {$first: "$libraries"} }},
+    {$lookup: {
+        from: "DonorInfo",
+        localField: "_id",
+        foreignField: "donor_name",
+        as: "donorinfo" }},
+    {$unwind: {path: "$donorinfo", preserveNullAndEmptyArrays: true}},
+    {$project: {
+        _id:0,
+        donor_name: "$_id",
+        tissue_types: 1,
+        external_id: "$donorinfo.external_name",
+        institute: "$donorinfo.institute",
+        libraries: 1 }}
+    ],
+    function(err, docs) {
+            if (err) throw err;
+            if (typeof docs[0] !== 'undefined') {
+                res.json(docs);
+            } else {
+                        //incorrect project name
+                res.status(404).send({error:"sequencer project name not found"});
+            }
+        });
+    }
+});
+
+router.get('/project_status_summary', function(req, res) {
+        res.status(400).send({error:"no donor name given"});
+});
+
+//per one project name
+router.get('/project_status_summary/:_id', function(req, res) {
+    if (req.params._id) {
+        library_info.aggregate
+([
+    {$match: {project_info_name: project }},
+    {$group: {
+        _id: "$library_head",
+        project_name: {$first: "$project_info_name"},
+        donor_count: {$sum: 1} }},
+    {$group: {
+        _id: "$project_name",
+        libraries: {$sum: "$donor_count"},
+        donors: {$push: {
+            donor_name: "$_id",
+            donor_count: "$donor_count"}} }},
+    {$lookup: {
+        from: "links",
+        localField: "_id",
+        foreignField: "project_name",
+        as: "urls" }},
+    {$unwind: {path: "$urls", preserveNullAndEmptyArrays: true}},
+    {$lookup: {
+        from: "ProjectInfo",
+        localField: "_id",
+        foreignField: "project_name",
+        as: "projectinfo" }},
+    {$unwind: {path: "$projectinfo", preserveNullAndEmptyArrays: true}},
+    {$project: {
+        _id:0,
+        project_name: "$_id",
+        libraries: 1,
+        donors: 1,
+        start_date: "$projectinfo.start_tstmp",
+        lims_url: "$urls.lims_url",
+        jira_url: "$urls.jira_url",
+        wiki_url: "$urls.wiki_url",}}
+    ],
+    function(err, docs) {
+            if (err) throw err;
+            if (typeof docs[0] !== 'undefined') {
+                res.json(docs);
+            } else {
+                        //incorrect project name
+                res.status(404).send({error:"sequencer project name not found"});
+            }
+        });
+    }
 });
 
 //donor_workflows
@@ -628,12 +803,12 @@ router.get('/donor_workflows/:_id', function(req, res) {
 
 //donor_workflows summary
                         //if donor name not given
-router.get('/donor_summary', function(req, res) {
+router.get('/donor_workflows_summary', function(req, res) {
         res.status(400).send({error:"no donor name given"});
 });
 
 //per one run name
-router.get('/donor_summary/:_id', function(req, res) {
+router.get('/donor_workflows_summary/:_id', function(req, res) {
     if (req.params._id) {
         library_info.aggregate
 ([
@@ -656,6 +831,8 @@ router.get('/donor_summary/:_id', function(req, res) {
                             else: 0}},
          run_name: "$origin.run_info_name",
          librarySummary: 1,
+         skip: "$origin.skip",
+         project_info_name: "$origin.project_info_name",
          tissueSummary:1}},
     { $group: {
         _id: {
@@ -664,9 +841,13 @@ router.get('/donor_summary/:_id', function(req, res) {
         libraryTotal: { $sum: "$librarySum"},
         tissueTotal: { $sum: "$tissueSum" },
         run_name: {$first: "$run_name"},
+        project_info_name: {$first: "$project_info_name"},
+        skipped: {$sum: "$skip"},
         libraryCount: {$sum: 1} }},
     { $group: {
         _id:req.params._id,
+        skipped: {$first: "$skipped"},
+        project_info_name: {$first: "$project_info_name"},
         library_count: {$first: "$libraryCount"},
         run_name: {$first: "$run_name"},
         library_summary: { $addToSet: {
@@ -687,6 +868,12 @@ router.get('/donor_summary/:_id', function(req, res) {
         foreignField: "donor_name",
         as: "donorDetails" }},
     { $unwind: {path:"$donorDetails", preserveNullAndEmptyArrays: true}},
+    { $lookup: {
+        from: "links",
+        localField: "project_info_name",
+        foreignField: "project_name",
+        as: "urls" }},
+    { $unwind: {path:"$urls", preserveNullAndEmptyArrays: true}},
     { $project: {
         _id: 0,
         donor_name: "$_id",
@@ -694,6 +881,10 @@ router.get('/donor_summary/:_id', function(req, res) {
         status: "$runstatus.status",
         start: { $min: "$runstatus.start_tstmp"},
         end: { $max: "$runstatus.end_tstmp"},
+        lims: "$urls.lims_url",
+        jira: "$urls.jira_url",
+        wiki: "$urls.wiki_url",
+        skipped: 1,
         library_count: 1,
         library_summary: 1,
         tissue_summary: 1 }}
@@ -731,6 +922,7 @@ router.get('/donor_details/:_id', function(req, res) {
     { $group: {
         _id: "$details.type",
         donor_info_name: {$first: "$donor_info_name"},
+        project_info_name: {$first: "$project_info_name"},
         qc_table: {$push: {
             library_name: "$library_name",
             iusswid: "$iusswid",
@@ -742,8 +934,17 @@ router.get('/donor_details/:_id', function(req, res) {
         foreignField: "donor_name",
         as: "external" }},
     { $unwind: {path: "$external", preserveNullAndEmptyArrays: true}},
+    { $lookup: {
+        from: "links"
+        localField: "project_info_name",
+        foreignField: "project_name",
+        as: "urls" }},
+    { $unwind: {path:"$urls", preserveNullAndEmptyArrays: true}},
     { $group: {
         _id: "$donor_info_name",
+        lims: {$first: "$urls.lims_url"},
+        jira: {$first: "$urls.jira_url"},
+        wiki: {$first: "$urls.wiki_url"},
         external_id: {$first: "$external.external_name"},
         tables: {$push: {
             library_type: "$_id",

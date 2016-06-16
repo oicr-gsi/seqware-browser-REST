@@ -249,6 +249,8 @@ router.get('/project_overview_summary', function(req, res) {
 router.get('/project_overview_summary/:_id', function(req, res) {
     if (req.params._id) {
         var array = req.params._id.split(",");
+        var startDate = new Date();
+        startDate.setDate(startDate.getDate()-7);
         library_info.aggregate
     ([
         { $match: { project_info_name: {$in: array} }},
@@ -259,12 +261,20 @@ router.get('/project_overview_summary/:_id', function(req, res) {
             foreignField: "sw_accession",
             as: "workflows" }},
         { $unwind: {path: "$workflows", preserveNullAndEmptyArrays: true}},
+        { $project: {
+            project_info_name: 1,
+            status: "$workflows.status",
+            library_name: 1,
+            workflow_name: "$workflows.workflow_name",
+            end_tstmp: "$workflows.end_tstmp"}},
+        { $match: {status: {$ne: null }}},
+        { $match: {$or: [ {end_tstmp: {$gt: startDate }}, {status: "running"} ]}},
         { $group: {
             _id: {
                 project_name: "$project_info_name",
-                status: "$workflows.status" },
+                status: "$status" },
              libraries: {$addToSet: {name: "$library_name"}},
-             workflows: {$addToSet: {name: "$workflows.workflow_name"}}}},
+             workflows: {$addToSet: {name: "$workflow_name"}}}},
         { $group: {
             _id: "$_id.status",
             per_project: {$push: {
@@ -691,7 +701,8 @@ router.get('/run_details/:_id', function(req, res) {
         "reads": {$sum: "$qc.reads"},
         "lane": {$first: "$lane"},
         "run_info_name": {$first: "$run_info_name"},
-    "library_name": {$first: "$library_name"},
+        "project_info_name": {$first: "$project_info_name"},
+        "library_name": {$first: "$library_name"},
         "qc": {$push: "$qc"}}},
     { $project: {
         "has_qc": {$cond: {if:{ $eq:["$yield",0]},//for determining status

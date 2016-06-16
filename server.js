@@ -241,6 +241,51 @@ router.get('/workflow_info/:_id/files', function(req, res) {
 	}
 });
 //========================================================
+//project runs summary - shares project details
+router.get('/project_runs/:_id', function(req, res) {
+if (req.params._id) {
+    var array = req.params._id.split(",");
+    library_info.aggregate
+([
+    {$match: { project_info_name: {$in: array} }},
+    {$group: {
+        _id: "$run_info_name",
+        unique_projects: {$addToSet: "$project_info_name"},
+        projects: {$push: {name:"$project_info_name"}} }},
+    {$unwind: {path:"$unique_projects", preserveNullAndEmptyArrays: true}},
+    {$unwind: {path:"$projects", preserveNullAndEmptyArrays: true}},
+    {$group: {
+        _id: {run_name: "$_id", unique_projects: "$unique_projects" },
+        project_count: {$sum: 1} }},
+    {$group: {
+        _id: "$_id.run_name",
+        projects: {$push: {
+            project_name: "$_id.unique_projects",
+            project_count: "$project_count" }} }},
+    {$lookup: {
+        from: "RunInfo",
+        localField: "_id",
+        foreignField: "run_name",
+        as: "runinfo" }},
+    {$unwind: {path: "$runinfo", preserveNullAndEmptyArrays: true}},
+    {$project: {
+        _id:0,
+        run_name: "$_id",
+        projects: 1,
+        sequencing_status: "$runinfo.status" }}
+    ],
+    function(err, docs) {
+            if (err) throw err;
+            if (typeof docs[0] !== 'undefined') {
+                res.json(docs);
+            } else {
+                        //incorrect project name
+                res.status(404).send({error:"project names not found"});
+            }
+        });
+    }
+});
+
 //run summary
 router.get('/run_summary', function(req, res) {
 		res.status(400).send({error:"no sequencer run name given"});

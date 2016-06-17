@@ -530,7 +530,7 @@ router.get('/run_details/:_id', function(req, res) {
      { $match: {correct_lane: 1}},
      { $sort: {_id: 1}},
      { $group: {
-        _id: run,
+        _id: req.params._id,
         "lanes": {$push:{
             lane: "$_id",
             library_count: "$library_count",
@@ -691,7 +691,7 @@ router.get('/project_status_summary/:_id', function(req, res) {
     if (req.params._id) {
         library_info.aggregate
 ([
-    {$match: {project_info_name: project }},
+    {$match: {project_info_name: req.params._id }},
     {$group: {
         _id: "$library_head",
         project_name: {$first: "$project_info_name"},

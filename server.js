@@ -340,7 +340,7 @@ router.get('/project_overview_pending', function(req, res) {
         res.status(400).send({error:"no project list given"});
 });
 
-router.get('/project_overview_pendings/:_id', function(req, res) {
+router.get('/project_overview_pending/:_id', function(req, res) {
     if (req.params._id) {
         var array = req.params._id.split(",");
         library_info.aggregate
@@ -795,7 +795,7 @@ router.get('/run_details/:_id', function(req, res) {
 
 //details for all projects
 router.get('/all_projects', function(req, res) {
-    LibraryInfo.aggregate
+    library_info.aggregate
     ([
         {$group: {
             _id: "$project_info_name",

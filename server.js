@@ -474,6 +474,53 @@ router.get('/run_workflows/:_id/:start', function(req, res) {
 	}
 });
 
+//run summary page
+router.get('/run_list', function(req, res) {
+    library_info.aggregate
+    ([
+        {$group: {
+            _id: "$run_info_name",
+            unique_projects: {$addToSet: "$library_head"},
+            projects: {$push: {name:"$library_head"}} }},
+        {$unwind: {path:"$unique_projects", preserveNullAndEmptyArrays: true}},
+        {$unwind: {path:"$projects", preserveNullAndEmptyArrays: true}},
+        {$group: {
+            _id: {run_name: "$_id", unique_projects: "$unique_projects" },
+            project_count: {$sum: 1} }},
+        {$group: {
+            _id: "$_id.run_name",
+            projects: {$push: {
+                project_name: "$_id.unique_projects",
+                project_count: "$project_count" }} }},
+        {$lookup: {
+            from: "RunInfo",
+            localField: "_id",
+            foreignField: "run_name",
+            as: "runinfo" }},
+        {$unwind: {path: "$runinfo", preserveNullAndEmptyArrays: true}},
+        {$project: {
+            _id:0,
+            run_name: "$_id",
+            projects: 1,
+            end_date: "$runinfo.end_tstmp",
+            start_date: "$runinfo.start_tstmp" }},
+        {$sort: { end_date: -1}},
+        {$group: {
+            _id: 0,
+            list: {$push: "$$ROOT"}
+        }}
+    ],
+    function(err, docs) {
+            if (err) throw err;
+            if (typeof docs[0] !== 'undefined') {
+                res.json(docs);
+            } else {
+                        //incorrect project name
+                res.status(404).send({error:"projects not found"});
+            }
+        });
+});
+
 //run_details
 						//if run name not given
 router.get('/run_details', function(req, res) {
@@ -482,8 +529,8 @@ router.get('/run_details', function(req, res) {
 
 //per one run name
 router.get('/run_details/:_id', function(req, res) {
-	if (req.params._id) {
-		library_info.aggregate
+    if (req.params._id) {
+    library_info.aggregate
 ([
     { $match: {run_info_name:req.params._id}},
     { $lookup: {
@@ -499,11 +546,13 @@ router.get('/run_details/:_id', function(req, res) {
             library_name:"$library_name"},
         "yield": {$sum: "$qc.yield"},
         "reads": {$sum: "$qc.reads"},
+        "read_length_1": {$first: "$qc.read_length_1"},
+        "read_length_2": {$first: "$qc.read_length_2"},
         "lane": {$first: "$lane"},
-        "barcode": {$first: "$barcode"},
-        "project_info_name": {$first: "$project_info_name"},
+        "barcode":{$first: "$barcode"},
+        "project_info": {$first: "$project_info_name"},
         "run_info_name": {$first: "$run_info_name"},
-    "library_name": {$first: "$library_name"},
+        "library_name": {$first: "$library_name"},
         "qc": {$push: "$qc"}}},
     { $project: {
         "has_qc": {$cond: {if:{ $eq:["$yield",0]},//for determining status
@@ -511,21 +560,66 @@ router.get('/run_details/:_id', function(req, res) {
                 else: 1}},
         "yield": 1,
         "reads": 1,
+        "read_length_1": 1,
+        "read_length_2": 1,
         "lane": 1,
         "barcode": 1,
+        "project_info": 1,
         "run_info_name": 1,
-        "project_info_name": 1,
         "library_name": 1,
         "qc": 1}},
     { $group: {
-        _id: "$lane",               //separates acording to the lane
+        _id: "$lane",               //separates according to the lane
         "library_count": {$sum: 1},
+        "unique_projects": {$addToSet: "$project_info"},
+        "projects": {$push: "$project_info"},
         "yield_sum": {$sum: "$yield"},
         "reads_sum": {$sum: "$reads"},
+        "read_length_1": {$first: "$read_length_1"},
+        "read_length_2": {$first: "$read_length_2"},
         "sum_has_qc": {$sum: "$has_qc"},
         "run_info_name": {$first: "$run_info_name"},
-        "project_info_name": {$first: "$project_info_name"},
         "libraries": {$push: {library_name: "$library_name", barcode: "$barcode", qc: "$qc"}} }},
+     {$unwind: {path:"$unique_projects", preserveNullAndEmptyArrays: true}},
+     {$unwind: {path:"$projects", preserveNullAndEmptyArrays: true}},
+     {$project: {                   //project count
+        _id: 1,
+        library_count: 1,
+        unique_projects: 1,
+        "yield_sum": 1,
+        "reads_sum": 1,
+        "read_length_1": 1,
+        "read_length_2": 1,
+        "sum_has_qc": 1,
+        "run_info_name": 1,
+        libraries:1,
+        same_projects: {$cond: {if:{ $eq:["$unique_projects","$projects"]},
+                            then: 1,
+                            else: 0}} }},
+    {$group: {
+        _id: {lane: "$_id", unique_projects: "$unique_projects" },
+        project_count: {$sum: "$same_projects"},
+        library_count: {$first: "$library_count"},
+        "yield_sum": {$first: "$yield_sum"},
+        "reads_sum": {$first: "$reads_sum"},
+        "read_length_1": {$first: "$read_length_1"},
+        "read_length_2": {$first: "$read_length_2"},
+        "sum_has_qc": {$first: "$sum_has_qc"},
+        "run_info_name": {$first: "$run_info_name"},
+        libraries: {$first: "$libraries"} }},
+     {$group: {
+        _id: "$_id.lane",
+        projects: {$push: {
+            project_name: "$_id.unique_projects",
+            project_count: "$project_count" }},
+        library_count: {$first: "$library_count"},
+        "yield_sum": {$first: "$yield_sum"},
+        "reads_sum": {$first: "$reads_sum"},
+        "read_length_1": {$first: "$read_length_1"},
+        "read_length_2": {$first: "$read_length_2"},
+        "sum_has_qc": {$first: "$sum_has_qc"},
+        "run_info_name": {$first: "$run_info_name"},
+        libraries: {$first: "$libraries"} }},
      { $lookup: {
         from: "RunReportData",
         localField: "run_info_name",
@@ -534,21 +628,24 @@ router.get('/run_details/:_id', function(req, res) {
      { $unwind: {path: "$laneinfo", preserveNullAndEmptyArrays: true}},
      { $unwind: {path: "$laneinfo.lanes", preserveNullAndEmptyArrays: true}},
      { $project: {
-        "correct_lane": {$cond: {if:{ $eq:["$_id","$laneinfo.lanes.lane"]},
+        "correct_lane": {$cond: {if:{ $or: [{$eq:["$_id", "$laneinfo.lanes.lane"]},{ $lt:["$laneinfo.lanes.lane", 0]} ]},
                 then: 1,
-                else: 0}},          //checks if RunReportData matched the lane
+                else: 0}},          //checks if RunReportData matched the lane, and if the collection has a matching run name
         "library_count": 1,
+        "projects": 1,
         "yield_sum": 1,
         "reads_sum": 1,
+        "read_length_1": 1,
+        "read_length_2": 1,
         "sum_has_qc": 1,
         "laneinfo": 1,
-        "project_info_name": 1,
         "libraries":1}},
      { $match: {correct_lane: 1}},
      { $sort: {_id: 1}},
      { $group: {
         _id: req.params._id,
         "lanes": {$push:{
+            projects: "$projects",
             lane: "$_id",
             library_count: "$library_count",
             yield_sum: "$yield_sum",
@@ -568,7 +665,8 @@ router.get('/run_details/:_id', function(req, res) {
         "lane_sum": {$sum: 1},
         "total_yield_sum": {$sum: "$yield_sum"},
         "total_reads_sum": {$sum: "$reads_sum"},
-        "project_info_name": {$first: "$project_info_name"},
+        "read_length_1": {$first: "$read_length_1"},
+        "read_length_2": {$first: "$read_length_2"},
         }},
     { $lookup: {
         from: "RunInfo",            //incorporates run status
@@ -576,21 +674,14 @@ router.get('/run_details/:_id', function(req, res) {
         foreignField: "run_name",
         as: "runstatus" }},
     { $unwind: {path:"$runstatus", preserveNullAndEmptyArrays: true}},
-    { $lookup: {
-        from: "links",
-        localField: "project_info_name",
-        foreignField: "project_name",
-        as: "urls" }},
-    { $unwind: {path:"$urls", preserveNullAndEmptyArrays: true}},
     { $project: {
         "_id": 1,
         "run_status": "$runstatus.status",
         "total_libraries": {$sum: "$lanes.library_count"},
         "total_yield_sum": 1,
         "total_reads_sum": 1,
-        "lims": "$urls.lims_url",
-        "jira": "$urls.jira_url",
-        "wiki": "$urls.wiki_url",
+        "read_length_1": 1,
+        "read_length_2": 1,
         "run_qc_status":  {$cond: {if:{ $eq:[{$sum: "$lanes.lane_complete_qc"},"$lane_sum"]},
                 then: "completed",
                 else: "in progress"}},

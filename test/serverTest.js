@@ -12,10 +12,8 @@ var expect = chai.expect;
 
 var test = require('unit.js');
 var server = require('../server');
-var mongourl = 'mongodb://10.30.128.97/dev_db_2';
-//mongoose.connect('mongodb://10.30.128.97:27017/dev_db', function (err) {
- //   if (err) console.error(err);
-//});
+var config = require('config.js');
+var mongourl = 'mongodb://' + config.mongo.host + '/'+ config.mongo.database;
 
 describe('server API:', function() {
 	before ('connect to mongoDB, create collections', function(done) {

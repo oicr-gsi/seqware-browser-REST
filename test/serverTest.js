@@ -3,12 +3,9 @@ var MongoClient = mongodb.MongoClient;
 var mongoose = require('mongoose');
 
 var chai = require('chai');
-//var chaiHttp=require('chai-http');
 var request = require("request");
 var assert = chai.assert;
 var expect = chai.expect;
-
-//chai.use(chaiHttp);
 
 var test = require('unit.js');
 var server = require('../server');
@@ -16,6 +13,7 @@ var config = require('config.js');
 var mongourl = 'mongodb://' + config.mongo.host + '/'+ config.mongo.database;
 
 describe('server API:', function() {
+	//preload database with data
 	before ('connect to mongoDB, create collections', function(done) {
 		MongoClient.connect(mongourl, function(err, db) {
 			db.collection('QC').remove({});
@@ -69,6 +67,7 @@ describe('server API:', function() {
 			done();
 		});
 	});
+	//includes all projects listed under the run
 	it('multiple projects in a lane', function(done) {
 		MongoClient.connect(mongourl, function(err, db) {
 			db.collection('QC').insert({'yield': 50, 'reads': 50, 'iusswid': "1234"});
@@ -88,6 +87,7 @@ describe('server API:', function() {
 			});
 		});
 	});
+	//in progress status when qc information not complete
 	it('one qc is missing/incomplete, checking status', function(done) {
 		MongoClient.connect(mongourl, function(err, db) {
 			db.collection('QC').remove({'iusswid': "2123"});
@@ -120,6 +120,7 @@ describe('server API:', function() {
 			});
 		});
 	});
+	//returns correct errors
 	it('run is not found in the LibraryInfo collection', function(done) {
 		request("http://localhost:8080/api/run_details/100000_A100_10000_100AA_BB", function(error, response, body) {
 			expect(response.statusCode).to.equal(404);

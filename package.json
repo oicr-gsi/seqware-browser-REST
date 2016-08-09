@@ -1,0 +1,16 @@
+{
+  "name": "seqware-test",
+  "version": "0.0.0",
+  "description": "",
+  "main": "test/serverTest.js",
+  "scripts": {
+    "test": "./node_modules/.bin/mocha --reporter spec"
+  },
+  "author": "",
+  "license": "BSD-2-Clause",
+  "dependencies": {
+    "mocha": "~2.5.3",
+    "chai": "~3.5.0",
+    "request": "~2.74.0"
+  }
+}

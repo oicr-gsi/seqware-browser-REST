@@ -1,8 +1,25 @@
-# seqware-browser-REST
-REST endpoints to query seqwarebrowser mongo
+Seqware-Browser-REST
+================
 
-This is a repo for REST endpoint code that isn't quite finished - you can pick up from where I left off
+REST endpoints to query mongodb for reporting app
 
-Download REST client and run the server.js in node
+### Set Up
+This project requires a config.js file to retrieve the database and host information. The file should look like this: 
+```
+var config = {};
 
-You can query for particular endpoints on your local machine
+config.mongo = {};
+
+config.mongo.host = '10.30.128.97';
+config.mongo.database = 'sqwdev';
+
+module.exports = config;
+```
+This file should be added to the node path
+---
+### Testing
+First install the required node modules then run the test: 
+```
+npm install
+npm test
+```

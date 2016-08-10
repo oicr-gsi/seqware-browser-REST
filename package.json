@@ -9,8 +9,13 @@
   "author": "",
   "license": "BSD-2-Clause",
   "dependencies": {
+    "unit.js": "~2.0.0",
     "mocha": "~2.5.3",
     "chai": "~3.5.0",
-    "request": "~2.74.0"
+    "request": "~2.74.0",
+    "body-parser": "~1.15.1",
+    "express": "~4.13.4",
+    "mongoose": "~4.4.17",
+    "mongodb": "~2.1.7"
   }
 }

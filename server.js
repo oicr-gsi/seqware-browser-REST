@@ -481,12 +481,19 @@ router.get('/run_list', function(req, res) {
         {$group: {
             _id: "$run_info_name",
             unique_projects: {$addToSet: "$library_head"},
-            projects: {$push: {name:"$library_head"}} }},
+            projects: {$push: "$library_head"} }},
         {$unwind: {path:"$unique_projects", preserveNullAndEmptyArrays: true}},
         {$unwind: {path:"$projects", preserveNullAndEmptyArrays: true}},
+        {$project: {
+            _id: 1,
+            unique_projects: 1,
+            projects: 1,
+            same_projects: {$cond: {if:{ $eq:["$unique_projects","$projects"]},
+                            then: 1,
+                            else: 0}} }},
         {$group: {
             _id: {run_name: "$_id", unique_projects: "$unique_projects" },
-            project_count: {$sum: 1} }},
+            project_count: {$sum: "$same_projects"} }},
         {$group: {
             _id: "$_id.run_name",
             projects: {$push: {

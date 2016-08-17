@@ -7,4 +7,4 @@ var RunSchema = new Schema({
 	run_name: {type: String, unique:true},
 });
 
-module.exports = mongoose.model('run_report_info', RunSchema, 'RunReportDataPhasing');
+module.exports = mongoose.model('run_report_info', RunSchema, 'RunReportData');

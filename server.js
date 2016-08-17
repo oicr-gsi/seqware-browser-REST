@@ -18,6 +18,9 @@ var project_info = require('./app/models/project_info');
 var run_info = require('./app/models/run_info');
 var run_report_info = require('./app/models/run_report_info');
 var workflow_info = require('./app/models/workflow_info');
+var SwaggerExpress = require('swagger-express-mw');
+var SwaggerUi = require('swagger-tools/middleware/swagger-ui');
+var swagger_app = require('express')();
 
 // Initialize mongo config
 mongoose.connect('mongodb://' + config.mongo.host + '/' + config.mongo.database, function (err) {
@@ -31,6 +34,11 @@ app.use(bodyParser.json());
 // set the port
 var port = process.env.PORT || 8080;
 
+module.exports = swagger_app; // for testing
+
+var swagger_config = {
+  appRoot: __dirname // required config
+};
 // API Routes
 // ========================================================
 var router = express.Router();
@@ -1533,6 +1541,17 @@ router.get('/donor_details/:_id', function(req, res) {
 // ========================================================
 // Register routes
 app.use('/api', router);
+
+SwaggerExpress.create(swagger_config, function(err, swaggerExpress) {
+  if (err) { throw err; }
+  //swagger ui
+  swagger_app.use(SwaggerUi(swaggerExpress.runner.swagger));
+  // install middleware
+  swaggerExpress.register(swagger_app);
+
+  var port = process.env.PORT || 10010;
+  swagger_app.listen(port, "0.0.0.0");
+});
 
 // Start the server
 app.listen(port);

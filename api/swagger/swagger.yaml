@@ -1,0 +1,365 @@
+swagger: "2.0"
+info:
+  version: "0.0.1"
+  title: Seqware-Browser-REST Queries
+host: localhost:10010 #10.30.128.97
+basePath: /
+schemes:
+  - http
+  - https
+consumes:
+  - application/json
+produces:
+  - application/json
+
+
+paths:
+  /project/overview_summary:
+    x-swagger-router-controller: queries
+    get:
+      tags:
+        - project
+      description: wireframe - 4; running workflows and completed workflows dashboards
+      operationId: projectOverviewSummary
+      parameters:
+        - name: projects
+          in: query
+          description: a list of projects, separated by commas, no spaces
+          required: true
+          type: string
+      responses:
+        "200":
+          description: library and workflow count per each project, grouped by status
+        default:
+          description: Error
+  /project/overview_libraries:
+    x-swagger-router-controller: queries
+    get:
+      tags:
+        - project
+      description: wireframe - 4; running and completed workflows in the last week
+      operationId: projectOverviewLibraries
+      parameters:
+        - name: projects
+          in: query
+          description: a list of projects, separated by commas, no spaces
+          required: true
+          type: string
+      responses:
+        "200":
+          description: count of libraries and workflows organized by status
+        default:
+          description: Error
+  /project/overview_pending:
+    x-swagger-router-controller: queries
+    get:
+      tags:
+        - project
+      description: wireframe - 4; list of pending sequencing runs
+      operationId: projectOverviewPending
+      parameters:
+        - name: projects
+          in: query
+          description: a list of projects, separated by commas, no spaces
+          required: true
+          type: string
+      responses:
+        "200":
+          description: run list
+        default:
+          description: Error
+  /project/overview:
+    x-swagger-router-controller: queries
+    get:
+      tags:
+        - project
+      description: wireframe - 4/5; project lists
+      operationId: projectOverview
+      parameters:
+        - name: projects
+          in: query
+          description: a list of projects, separated by commas, no spaces
+          required: false
+          type: string
+      responses:
+        "200":
+          description: list of donors and library count per each project
+        default:
+          description: Error
+  /project/runs:
+    x-swagger-router-controller: queries
+    get:
+      tags:
+        - project
+      description: wireframe - 5; list of runs on top of the page
+      operationId: projectRuns
+      parameters:
+        - name: projects
+          in: query
+          description: a list of projects, separated by commas, no spaces
+          required: false
+          type: string
+      responses:
+        "200":
+          description: list of projects and their status, grouped by runs
+        default:
+          description: Error
+  /run/timeframe_summary_running:
+    x-swagger-router-controller: queries
+    get:
+      tags:
+        - run
+      description: wireframe - 6; running workflows table
+      operationId: runTimeframeSummaryRunning
+      parameters:
+        - name: start
+          in: query
+          description: what date to start filtering
+          required: true
+          type: string
+        - name: end
+          in: query
+          description: what date to end filtering
+          required: true
+          type: string
+      responses:
+        "200":
+          description: project count and count of running workflows, grouped by workflow names
+        default:
+          description: Error
+  /run/timeframe_summary_libraries:
+    x-swagger-router-controller: queries
+    get:
+      tags:
+        - run
+      description: wireframe - 6; failed workflows and completed workflows overview
+      operationId: runTimeframeSummaryLibraries
+      parameters:
+        - name: start
+          in: query
+          description: what date to start filtering
+          required: true
+          type: string
+        - name: end
+          in: query
+          description: what date to end filtering
+          required: true
+          type: string
+      responses:
+        "200":
+          description: workflow and libraries list per every status
+        default:
+          description: Error
+  /run/timeframe_summary_pending:
+    x-swagger-router-controller: queries
+    get:
+      tags:
+        - run
+      description: wireframe - 6; pending sequencing runs overview
+      operationId: runTimeframeSummaryPending
+      parameters:
+        - name: start
+          in: query
+          description: what date to start filtering
+          required: true
+          type: string
+        - name: end
+          in: query
+          description: what date to end filtering
+          required: true
+          type: string
+      responses:
+        "200":
+          description: library count for each pending run
+        default:
+          description: Error
+  /run/timeframe:
+    x-swagger-router-controller: queries
+    get:
+      tags:
+        - run
+      description: wireframe - 6; run list
+      operationId: runTimeframe
+      parameters:
+        - name: start
+          in: query
+          description: what date to start filtering
+          required: true
+          type: string
+        - name: end
+          in: query
+          description: what date to end filtering
+          required: true
+          type: string
+      responses:
+        "200":
+          description: runs, their corresponding libraries, and the workflow analysis status
+        default:
+          description: Error
+  /run/workflows_summary:
+    x-swagger-router-controller: queries
+    get:
+      tags:
+        - run
+      description: wireframe 7a/b; overview for all libraries present
+      operationId: runWorkflowsSummary
+      parameters:
+        - name: run
+          in: query
+          description: the run name
+          required: true
+          type: string
+      responses:
+        "200":
+          description: donor, library and tissue type count
+        default:
+          description: Error
+  /run/workflows:
+    x-swagger-router-controller: queries
+    get:
+      tags:
+        - run
+      description: wireframe 7a/b; library names and their workflows
+      operationId: runWorkflows
+      parameters:
+        - name: run
+          in: query
+          description: the run name
+          required: true
+          type: string
+      responses:
+        "200":
+          description: workflows contain dates, analysis type, and a file count
+        default:
+          description: Error
+  /run/details:
+    x-swagger-router-controller: queries
+    get:
+      tags:
+        - run
+      description: wireframe 7c; libraries sorted by lanes for a given run
+      operationId: runDetails
+      parameters:
+        - name: run
+          in: query
+          description: the run name
+          required: true
+          type: string
+      responses:
+        "200":
+          description: QC data given for each library
+        default:
+          description: Error
+  /project/all:
+    x-swagger-router-controller: queries
+    get:
+      tags:
+        - project
+      description: wireframe 8; list of all the active and inactive projects
+      operationId: allProjects
+      parameters:
+        - name: project
+          in: query
+          description: the project name
+          required: true
+          type: string
+      responses:
+        "200":
+          description: count of donor types and has linkd to wiki, jira and lims references
+        default:
+          description: Error"
+  /project/status_summary:
+    x-swagger-router-controller: queries
+    get:
+      tags:
+        - project
+      description: wireframe 9; header with overall details
+      operationId: projectStatusSummary
+      parameters:
+        - name: project
+          in: query
+          description: the project name
+          required: true
+          type: string
+      responses:
+        "200":
+          description: list of donors and external references
+        default:
+          description: Error
+  /project/status:
+    x-swagger-router-controller: queries
+    get:
+      tags:
+        - project
+      description: wireframe 9; libraries per each donor name 
+      operationId: projectStatus
+      parameters:
+        - name: project
+          in: query
+          description: the project name
+          required: true
+          type: string
+      responses:
+        "200":
+          description: contains workflow analysis status and sequencing status
+        default:
+          description: Error
+  /donor/workflows_summary:
+    x-swagger-router-controller: queries
+    get:
+      tags:
+        - donor
+      description: wireframe 10a; overview per a donor
+      operationId: donorWorkflowsSummary
+      parameters:
+        - name: donor
+          in: query
+          description: the name of the donor
+          required: true
+          type: string
+      responses:
+        "200":
+          description: sum of library types, tissue types, and skipped libraries
+        default:
+          description: Error
+  /donor/workflows:
+    x-swagger-router-controller: queries
+    get:
+      tags:
+        - donor
+      description: wireframe 10a; list of libraries and their workflows
+      operationId: donorWorkflows
+      parameters:
+        - name: donor
+          in: query
+          description: dates, analysis type and a file count per each workflow
+          required: true
+          type: string
+      responses:
+        "200":
+          description: An array of libraries
+        default:
+          description: Error
+  /donor/details:
+    x-swagger-router-controller: queries
+    get:
+      tags:
+        - donor
+      description: wireframe 10b; libraries sorted by type
+      operationId: donorDetails
+      parameters:
+        - name: donor
+          in: query
+          description: the name of the donor
+          required: true
+          type: string
+      responses:
+        "200":
+          description: QC data given for each library
+        default:
+          description: Error
+
+  /swagger:
+    x-swagger-pipe: swagger_raw
+
+

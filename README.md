@@ -21,5 +21,6 @@ This file should be added to the node path
 First install the required node modules then run the test: 
 ```
 npm install
-npm test
+export NODE_PATH=path_to_seqware-browser-REST
+env KEY=mongo_address npm test
 ```

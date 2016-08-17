@@ -462,6 +462,282 @@ if (req.params.start) {
     }
 });
 
+//project runs summary - shares project details
+router.get('/project_runs/:_id', function(req, res) {
+if (req.params._id) {
+    var array = req.params._id.split(",");
+    library_info.aggregate
+([
+    {$match: { project_info_name: {$in: array} }},
+    {$group: {
+        _id: "$run_info_name",
+        unique_projects: {$addToSet: "$project_info_name"},
+        projects: {$push: {name:"$project_info_name"}} }},
+    {$unwind: {path:"$unique_projects", preserveNullAndEmptyArrays: true}},
+    {$unwind: {path:"$projects", preserveNullAndEmptyArrays: true}},
+    {$group: {
+        _id: {run_name: "$_id", unique_projects: "$unique_projects" },
+        project_count: {$sum: 1} }},
+    {$group: {
+        _id: "$_id.run_name",
+        projects: {$push: {
+            project_name: "$_id.unique_projects",
+            project_count: "$project_count" }} }},
+    {$lookup: {
+        from: "RunInfo",
+        localField: "_id",
+        foreignField: "run_name",
+        as: "runinfo" }},
+    {$unwind: {path: "$runinfo", preserveNullAndEmptyArrays: true}},
+    {$project: {
+        _id:0,
+        run_name: "$_id",
+        projects: 1,
+        sequencing_status: "$runinfo.status" }}
+    ],
+    function(err, docs) {
+            if (err) throw err;
+            if (typeof docs[0] !== 'undefined') {
+                res.json(docs);
+            } else {
+                        //incorrect project name
+                res.status(404).send({error:"project names not found"});
+            }
+        });
+    }
+});
+
+//project_summary
+router.get('/project_overview_summary', function(req, res) {
+        res.status(400).send({error:"no project list given"});
+});
+
+router.get('/project_overview_summary/:_id', function(req, res) {
+    if (req.params._id) {
+        var array = req.params._id.split(",");
+        var startDate = new Date();
+        startDate.setDate(startDate.getDate()-7);
+        library_info.aggregate
+    ([
+        { $match: { project_info_name: {$in: array} }},
+        { $unwind: {path: "$workflowinfo_accession", preserveNullAndEmptyArrays: true}},
+        { $lookup: {
+            from: "WorkflowInfo",
+            localField: "workflowinfo_accession",
+            foreignField: "sw_accession",
+            as: "workflows" }},
+        { $unwind: {path: "$workflows", preserveNullAndEmptyArrays: true}},
+        { $project: {
+            project_info_name: 1,
+            status: "$workflows.status",
+            library_name: 1,
+            workflow_name: "$workflows.workflow_name",
+            end_tstmp: "$workflows.end_tstmp"}},
+        { $match: {status: {$ne: null }}},
+        { $match: {$or: [ {end_tstmp: {$gt: startDate }}, {status: "running"} ]}},
+        { $group: {
+            _id: {
+                project_name: "$project_info_name",
+                status: "$status" },
+             libraries: {$addToSet: {name: "$library_name"}},
+             workflows: {$addToSet: {name: "$workflow_name"}}}},
+        { $group: {
+            _id: "$_id.status",
+            per_project: {$push: {
+                project_name: "$_id.project_name",
+                library_count: {$size: "$libraries"},
+                workflow_count: {$size:"$workflows" } }} }}
+    ],
+    function(err, docs) {
+            if (err) throw err;
+            if (typeof docs[0] !== 'undefined') {
+                res.json(docs);
+            } else {
+                        //incorrect project name
+                res.status(404).send({error:"project names not found"});
+            }
+        });
+    }
+});
+
+router.get('/project_overview_libraries', function(req, res) {
+        res.status(400).send({error:"no project list given"});
+});
+
+router.get('/project_overview_libraries/:_id', function(req, res) {
+    if (req.params._id) {
+        var array = req.params._id.split(",");
+        library_info.aggregate
+    ([
+        { $match: { project_info_name: {$in: array} }},
+        {$unwind: {path:"$workflowinfo_accession", preserveNullAndEmptyArrays: true}},
+        {$lookup: {
+            from: "WorkflowInfo",
+            localField: "workflowinfo_accession",
+            foreignField: "sw_accession",
+            as: "workflows" }},
+        {$unwind: {path:"$workflows", preserveNullAndEmptyArrays: true}},
+        {$group: {
+            _id: {
+                status: "$workflows.status",
+                workflow_name: "$workflows.workflow_name" },
+            libraries: {$addToSet: "$library_name"} }},
+        {$group: {
+            _id: "$_id.status",
+            workflow_count: {$sum: 1},
+            library_count: {$sum: {$size: "$libraries"}},
+            workflows: {$push: {
+                workflow_name: "$_id.workflow_name",
+                libraries: "$libraries" }} }}
+    ],
+    function(err, docs) {
+            if (err) throw err;
+            if (typeof docs[0] !== 'undefined') {
+                res.json(docs);
+            } else {
+                        //incorrect project name
+                res.status(404).send({error:"project names not found"});
+            }
+        });
+    }
+});
+
+router.get('/project_overview_pending', function(req, res) {
+        res.status(400).send({error:"no project list given"});
+});
+
+router.get('/project_overview_pending/:_id', function(req, res) {
+    if (req.params._id) {
+        var array = req.params._id.split(",");
+        library_info.aggregate
+    ([
+        { $match: { project_info_name: {$in: array} }},
+        {$lookup: {
+            from: "RunInfo",
+            localField: "run_info_name",
+            foreignField: "run_name",
+            as: "runinfo" }},
+        {$unwind: {path:"$runinfo", preserveNullAndEmptyArrays: true}},
+        {$project: {
+            run_status: "$runinfo.status",
+            run_info_name: 1 }},
+        {$match: { run_status: "pending" }},
+        {$group: {
+            _id: "$run_info_name",
+            library_count: {$sum: 1} }}
+    ],
+    function(err, docs) {
+            if (err) throw err;
+            if (typeof docs[0] !== 'undefined') {
+                res.json(docs);
+            } else {
+                        //incorrect project name
+                res.status(404).send({error:"project names not found"});
+            }
+        });
+    }
+});
+
+//project_overview
+//if not specified, return information on all projects
+router.get('/project_overview', function(req, res) {
+    library_info.aggregate
+    ([
+        {$group: {
+            _id: "$project_info_name",
+            library_count: {$sum: 1},
+            unique_donors: {$addToSet: "$library_head"},
+            donors: {$push: {name:"$library_head"}} }},
+        {$unwind: {path:"$unique_donors", preserveNullAndEmptyArrays: true}},
+        {$unwind: {path:"$donors", preserveNullAndEmptyArrays: true}},
+        {$group: {
+            _id: {project_name: "$_id", unique_donors: "$unique_donors" },
+            donor_count: {$sum: 1},
+            library_count: {$first: "$library_count" } }},
+        {$group: {
+            _id: "$_id.project_name",
+            library_count: {$first: "$library_count" },
+            donors: {$push: {
+                donor_name: "$_id.unique_donors",
+                donor_count: "$donor_count" }} }},
+        {$lookup: {
+            from: "links",
+            localField: "_id",
+            foreignField: "project_name",
+            as: "urls" }},
+        {$unwind: {path: "$urls", preserveNullAndEmptyArrays: true}},
+        {$sort: {_id: 1} },
+        {$project: {
+            _id: 0,
+            project_name: "$_id",
+            library_count: 1,
+            donors: 1,
+            lims_url: "$urls.lims_url",
+            jira_url: "$urls.jira_url",
+            wiki_url: "$urls.wiki_url" }}
+    ],
+    function(err, docs) {
+        if (err) throw err;
+        if (typeof docs[0] !== 'undefined') {
+            res.json(docs);
+        } else {
+            res.status(404).send({error:"no information found"});
+        }
+    });
+});
+
+//return information on an array of specified projects (given as a comma separated string)
+router.get('/project_overview/:_id', function(req, res) {
+if (req.params._id) {
+    var array = req.params._id.split(",");
+    library_info.aggregate
+([
+    {$match: { project_info_name: {$in: array} }},
+    {$group: {
+        _id: "$project_info_name",
+        library_count: {$sum: 1},
+        unique_donors: {$addToSet: "$library_head"},
+        donors: {$push: {name:"$library_head"}} }},
+    {$unwind: {path:"$unique_donors", preserveNullAndEmptyArrays: true}},
+    {$unwind: {path:"$donors", preserveNullAndEmptyArrays: true}},
+    {$group: {
+        _id: {project_name: "$_id", unique_donors: "$unique_donors" },
+        donor_count: {$sum: 1},
+        library_count: {$first: "$library_count" } }},
+    {$group: {
+        _id: "$_id.project_name",
+        library_count: {$first: "$library_count" },
+        donors: {$push: {
+            donor_name: "$_id.unique_donors",
+            donor_count: "$donor_count" }} }},
+    {$lookup: {
+        from: "links",
+        localField: "_id",
+        foreignField: "project_name",
+        as: "urls" }},
+    {$unwind: {path: "$urls", preserveNullAndEmptyArrays: true}},
+    {$sort: {_id: 1} },
+    {$project: {
+        _id: 0,
+        project_name: "$_id",
+        library_count: 1,
+        donors: 1,
+        lims_url: "$urls.lims_url",
+        jira_url: "$urls.jira_url",
+        wiki_url: "$urls.wiki_url" }}
+    ],
+    function(err, docs) {
+            if (err) throw err;
+            if (typeof docs[0] !== 'undefined') {
+                res.json(docs);
+            } else {
+                        //incorrect project name
+                res.status(404).send({error:"project names not found"});
+            }
+        });
+    }
+});
+
 //run summary
 router.get('/run_summary', function(req, res) {
 		res.status(400).send({error:"no sequencer run name given"});
@@ -691,7 +967,8 @@ router.get('/run_details/:_id', function(req, res) {
         "reads": {$sum: "$qc.reads"},
         "lane": {$first: "$lane"},
         "run_info_name": {$first: "$run_info_name"},
-    "library_name": {$first: "$library_name"},
+        "project_info_name": {$first: "$project_info_name"},
+        "library_name": {$first: "$library_name"},
         "qc": {$push: "$qc"}}},
     { $project: {
         "has_qc": {$cond: {if:{ $eq:["$yield",0]},//for determining status
@@ -780,6 +1057,60 @@ router.get('/run_details/:_id', function(req, res) {
 			}
 		});
 	}
+});
+
+//details for all projects
+router.get('/all_projects', function(req, res) {
+    library_info.aggregate
+    ([
+        {$group: {
+            _id: "$project_info_name",
+            library_count: {$sum: 1},
+            unique_donors: {$addToSet: "$library_head"},
+            donors: {$push: {name:"$library_head"}} }},
+        {$unwind: {path:"$unique_donors", preserveNullAndEmptyArrays: true}},
+        {$unwind: {path:"$donors", preserveNullAndEmptyArrays: true}},
+        {$group: {
+            _id: {project_name: "$_id", unique_donors: "$unique_donors" },
+            donor_count: {$sum: 1},
+            library_count: {$first: "$library_count" } }},
+        {$group: {
+            _id: "$_id.project_name",
+            library_count: {$first: "$library_count" },
+            donors: {$push: {
+                donor_name: "$_id.unique_donors",
+                donor_count: "$donor_count" }} }},
+        {$lookup: {
+            from: "links",
+            localField: "_id",
+            foreignField: "project_name",
+            as: "urls" }},
+        {$unwind: {path: "$urls", preserveNullAndEmptyArrays: true}},
+        {$lookup: {
+            from: "ProjectInfo",
+            localField: "_id",
+            foreignField: "project_name",
+            as: "projectinfo" }},
+        {$unwind: {path: "$projectinfo", preserveNullAndEmptyArrays: true}},
+        {$sort: {_id: 1} },
+        {$project: {
+            _id: 0,
+            project_name: "$_id",
+            start_date: "$projectinfo.start_tstmp",
+            library_count: 1,
+            donors: 1,
+            lims_url: "$urls.lims_url",
+            jira_url: "$urls.jira_url",
+            wiki_url: "$urls.wiki_url" }}
+    ],
+    function(err, docs) {
+        if (err) throw err;
+        if (typeof docs[0] !== 'undefined') {
+            res.json(docs);
+        } else {
+            res.status(404).send({error:"no information found"});
+        }
+    });
 });
 
 //donor_workflows

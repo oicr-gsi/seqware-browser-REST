@@ -240,6 +240,21 @@ router.get('/workflow_info/:_id/files', function(req, res) {
 		});
 	}
 });
+
+//graphs per iusswid
+router.get('/graph_data/:_id', function(req, res) {
+    if (req.params._id) {
+        var id = parseInt(req.params._id);
+        graph_data.find({iusswid: id}, function(err, docs) {
+            if (err) throw err;
+            if (typeof docs[0] !== 'undefined') {
+                res.json(docs);
+            } else {
+                res.json({message: 'Not found'});
+            }
+        });
+    }
+});
 //========================================================
 //run timeframe summaries
 router.get('/run_timeframe_summary_running', function(req, res) {
@@ -982,6 +997,7 @@ router.get('/run_details/:_id', function(req, res) {
         "yield": {$sum: "$qc.yield"},
         "reads": {$sum: "$qc.reads"},
         "lane": {$first: "$lane"},
+        "barcode": {$first: "$barcode"},
         "project_info_name": {$first: "$project_info_name"},
         "run_info_name": {$first: "$run_info_name"},
         "project_info_name": {$first: "$project_info_name"},
@@ -994,6 +1010,7 @@ router.get('/run_details/:_id', function(req, res) {
         "yield": 1,
         "reads": 1,
         "lane": 1,
+        "barcode": 1,
         "run_info_name": 1,
         "project_info_name": 1,
         "library_name": 1,
@@ -1006,7 +1023,7 @@ router.get('/run_details/:_id', function(req, res) {
         "sum_has_qc": {$sum: "$has_qc"},
         "run_info_name": {$first: "$run_info_name"},
         "project_info_name": {$first: "$project_info_name"},
-        "libraries": {$push: {library_name: "$library_name", qc: "$qc"}} }},
+        "libraries": {$push: {library_name: "$library_name", barcode: "$barcode", qc: "$qc"}} }},
      { $lookup: {
         from: "RunReportData",
         localField: "run_info_name",

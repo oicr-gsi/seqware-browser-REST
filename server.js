@@ -241,6 +241,227 @@ router.get('/workflow_info/:_id/files', function(req, res) {
 	}
 });
 //========================================================
+//run timeframe summaries
+router.get('/run_timeframe_summary_running', function(req, res) {
+        res.status(400).send({error:"no timeframe given"});
+});
+
+router.get('/run_timeframe_summary_running/:start/:end', function(req, res) {
+if (req.params.start) {
+        var start_date = new Date (req.params.start);
+        var end_date = new Date (req.params.end);
+        library_info.aggregate
+([
+    {$match: { create_tstmp: {$gt: start_date, $lt: end_date} }},
+    {$unwind: {path:"$workflowinfo_accession", preserveNullAndEmptyArrays: true}},
+    {$lookup: {
+        from: "WorkflowInfo",
+        localField: "workflowinfo_accession",
+        foreignField: "sw_accession",
+        as: "workflows" }},
+    {$unwind: {path:"$workflows", preserveNullAndEmptyArrays: true}},
+    {$project: {
+        project_name: "$project_info_name",
+        workflow_name: "$workflows.workflow_name",
+        if_running: {$cond: {if:{ $eq:["$workflows.status","running"]},
+                            then: 1,
+                            else: 0}} }},
+    {$group: {
+        _id: {
+            project_name: "$project_name",
+            workflow_name: "$workflow_name"},
+        count: {$sum: 1},
+        running_count: {$sum: "$if_running"} }},
+    {$group: {
+        _id: "$_id.workflow_name",
+        running_count: {$sum: "$running_count"},
+        projects: {$addToSet: {
+            project_name: "$_id.project_name",
+            count: "$count"}} }}
+    ],
+    function(err, docs) {
+            if (err) throw err;
+            if (typeof docs[0] !== 'undefined') {
+                res.json(docs);
+            } else {
+                        //incorrect time given
+                res.status(404).send({error:"no libraries found in the given timeframe"});
+            }
+        });
+    }
+});
+
+router.get('/run_timeframe_summary_libraries', function(req, res) {
+        res.status(400).send({error:"no timeframe given"});
+});
+
+router.get('/run_timeframe_summary_libraries/:start/:end', function(req, res) {
+if (req.params.start) {
+        var start_date = new Date (req.params.start);
+        var end_date = new Date (req.params.end);
+        library_info.aggregate
+([
+    {$match: { create_tstmp: {$gt: start_date, $lt: end_date} }},
+    {$unwind: {path:"$workflowinfo_accession", preserveNullAndEmptyArrays: true}},
+    {$lookup: {
+        from: "WorkflowInfo",
+        localField: "workflowinfo_accession",
+        foreignField: "sw_accession",
+        as: "workflows" }},
+    {$unwind: {path:"$workflows", preserveNullAndEmptyArrays: true}},
+    {$group: {
+        _id: {
+            status: "$workflows.status",
+            workflow_name: "$workflows.workflow_name" },
+        libraries: {$addToSet: "$library_name"} }},
+    {$group: {
+        _id: "$_id.status",
+        workflow_count: {$sum: 1},
+        library_count: {$sum: {$size: "$libraries"}},
+        workflows: {$push: {
+            workflow_name: "$_id.workflow_name",
+            libraries: "$libraries" }} }}
+    ],
+       function(err, docs) {
+            if (err) throw err;
+            if (typeof docs[0] !== 'undefined') {
+                res.json(docs);
+            } else {
+                        //incorrect time given
+                res.status(404).send({error:"no libraries found in the given timeframe"});
+            }
+        });
+    }
+});
+
+router.get('/run_timeframe_summary_pending', function(req, res) {
+        res.status(400).send({error:"no timeframe given"});
+});
+
+router.get('/run_timeframe_summary_pending/:start/:end', function(req, res) {
+if (req.params.start) {
+        var start_date = new Date (req.params.start);
+        var end_date = new Date (req.params.end);
+        library_info.aggregate
+([ 
+    {$match: { create_tstmp: {$gt: start_date, $lt: end_date} }},
+    {$lookup: {
+        from: "RunInfo",
+        localField: "run_info_name",
+        foreignField: "run_name",
+        as: "runinfo" }},
+    {$unwind: {path:"$runinfo", preserveNullAndEmptyArrays: true}},
+    {$project: {
+        run_status: "$runinfo.status",
+        run_info_name: 1 }},
+    {$match: { run_status: "pending" }},
+    {$group: {
+        _id: "$run_info_name",
+        library_count: {$sum: 1} }}
+    ],
+    function(err, docs) {
+            if (err) throw err;
+            if (typeof docs[0] !== 'undefined') {
+                res.json(docs);
+            } else {
+                        //incorrect run name
+                res.status(404).send({error:"no libraries found in the given timeframe"});
+            }
+        });
+    }
+});
+
+router.get('/run_timeframe', function(req, res) {
+        res.status(400).send({error:"no timeframe given"});
+});
+
+//per one run name
+router.get('/run_timeframe/:start/:end', function(req, res) {
+if (req.params.start) {
+        var start_date = new Date (req.params.start);
+        var end_date = new Date (req.params.end);
+        library_info.aggregate
+([
+    {$match: { create_tstmp: {$gt: start_date, $lt: end_date} }},
+    {$group: {
+        _id: "$iusswid",
+        origin: {$push: "$$ROOT"} }},
+    {$unwind: {path:"$origin", preserveNullAndEmptyArrays: true}},
+    {$unwind: {path:"$origin.workflowinfo_accession", preserveNullAndEmptyArrays: true}},
+    {$lookup: {
+        from: "WorkflowInfo",
+        localField: "origin.workflowinfo_accession",
+        foreignField: "sw_accession",
+        as: "workflows" }},
+    {$unwind: {path:"$workflows", preserveNullAndEmptyArrays: true}},
+    {$group: {
+        _id: {
+            iusswid: "$_id",
+            analysis_type: "$workflows.analysis_type",
+            status: "$workflows.status" },
+        status_count: {$sum: 1},
+        origin: {$first: "$origin"} }},
+    {$group: {
+        _id: "$_id.iusswid",
+        workflow_analysis_status: {$push: {
+               analysis_type: "$_id.analysis_type",
+               status: "$_id.status",
+               count: "$status_count"}},
+         origin: {$first: "$origin"} }},
+    {$group: {
+        _id: "$origin.run_info_name",
+        unique_projects: {$addToSet: "$origin.project_info_name"},
+        projects: {$push: "$origin.project_info_name"},
+        libraries: {$push: {
+           library_name: "$origin.library_name",
+           barcode: "$origin.barcode",
+           lane: "$origin.lane",
+           workflow_analysis_status: "$workflow_analysis_status" }} }},
+    {$unwind: {path:"$unique_projects", preserveNullAndEmptyArrays: true}},
+    {$unwind: {path:"$projects", preserveNullAndEmptyArrays: true}},
+    {$project: {
+        _id: 1,
+        unique_projects: 1,
+        libraries:1,
+        same_projects: {$cond: {if:{ $eq:["$unique_projects","$projects"]},
+                            then: 1,
+                            else: 0}} }},
+    {$group: {
+        _id: {run_name: "$_id", unique_projects: "$unique_projects" },
+        project_count: {$sum: "$same_projects"},
+        libraries: {$first: "$libraries"} }},
+    {$group: {
+        _id: "$_id.run_name",
+        projects: {$push: {
+            project_name: "$_id.unique_projects",
+            project_count: "$project_count" }},
+            libraries: {$first: "$libraries"} }},
+    {$lookup: {
+        from: "RunInfo",
+        localField: "_id",
+        foreignField: "run_name",
+        as: "runinfo" }},
+    {$unwind: {path: "$runinfo", preserveNullAndEmptyArrays: true}},
+    {$project: {
+        _id:0,
+        run_name: "$_id",
+        projects: 1,
+        sequencing_status: "$runinfo.status",
+        start_date: "$runinfo.start_tstmp",
+        libraries: 1 }}
+    ],
+    function(err, docs) {
+            if (err) throw err;
+            if (typeof docs[0] !== 'undefined') {
+                res.json(docs);
+            } else {
+                        //incorrect time given
+                res.status(404).send({error:"no libraries found in the given timeframe"});
+            }
+        });
+    }
+});
+
 //project runs summary - shares project details
 router.get('/project_runs/:_id', function(req, res) {
 if (req.params._id) {

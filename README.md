@@ -23,8 +23,8 @@ run npm install to get the node modules before running this project
 First install the required node modules then run the test: 
 ```
 npm install
-export NODE_PATH=path_to_seqware-browser-REST
-env KEY=mongo_address npm test
+export NODE_PATH=path_to_tmp/test
+npm --mongo_db_for_testing=host_address test
 ```
 ### Swagger documentation
 Before running, configure the db.js file to mongodb and the corresponding database.

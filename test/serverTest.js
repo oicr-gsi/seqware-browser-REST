@@ -11,16 +11,22 @@ var expect = chai.expect;
 var test = require('unit.js');
 var server;
 
-var host = process.env.KEY;
+var input = process.env.npm_config_mongo_db_for_testing;
 var randomNum = parseInt(Math.random()*100000);
 var database = "test_"+ randomNum;
 var mongourl = 'mongodb://' + host + '/'+ database;
 console.log("entering describe");
 describe('server API:', function() {
 	//preload database with data
+	if(input==undefined) {
+		test.fail('mongo address was not entered correctly: npm --mongo_db_for_testing=_______ test');
+	}
 	console.log("entering before");
 	before ('make config.js, connect to mongoDB, create collections', function(done) {
 		MongoClient.connect(mongourl, function(err, db) {
+			if(db==null) {
+				test.fail('incorrect address entered');
+			}
 			db.collection('QC').remove({});
 			db.collection('LibraryInfo').remove({});
 			db.collection('RunReportData').remove({});
@@ -67,10 +73,13 @@ describe('server API:', function() {
 	});
 	after ('drop database', function(done) {
 		MongoClient.connect(mongourl, function(err, db) {
-				db.dropDatabase();
-				db.close();
-				done();
-			});
+			if(db==null) {
+				test.fail('incorrect address entered');
+			}
+			db.dropDatabase();
+			db.close();
+			done();
+		});
 	});
 	it('connected to server.js', function(done) {
 		request("http://localhost:8080/api/", function(error, response, body) {

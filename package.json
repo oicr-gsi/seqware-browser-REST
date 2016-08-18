@@ -6,8 +6,7 @@
   "main": "server.js",
   "scripts": {
     "test": "./node_modules/.bin/mocha --reporter spec",
-    "start": "node app.js",
-    "start": "node server.js"
+    "start": "node serverConnect.js"
   },
   "author": "",
   "license": "BSD-2-Clause",

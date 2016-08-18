@@ -3,21 +3,13 @@ Seqware-Browser-REST
 
 REST endpoints to query mongodb for reporting app
 
-### Set Up
-This project requires a config.js file to retrieve the database and host information. The file should look like this: 
+### Set Up and Running
+serverConnect.js starts the connection to mongodb, and then calls server.js which contains all the endpoints. the package.json points npm start to serverConnect.js. 
 ```
-var config = {};
-
-config.mongo = {};
-
-config.mongo.host = '10.30.128.97';
-config.mongo.database = 'sqwdev';
-
-module.exports = config;
+npm install
+npm --host=host_address --database=database_name --port=port_number start
 ```
-This file should be added to the node path.
-
-run npm install to get the node modules before running this project
+Including the port number is optional. It will otherwise be set to port 8080.
 ---
 ### Testing
 First install the required node modules then run the test: 

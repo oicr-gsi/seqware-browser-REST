@@ -6,7 +6,6 @@ var config = require('config.js')
 var express = require('express');
 var app = express();
 var bodyParser = require('body-parser');
-var mongoose = require('mongoose');
 var current_workflow_runs = require('./app/models/current_workflow_runs');
 var donor_info = require('./app/models/donor_info');
 var file_info = require('./app/models/file_info');
@@ -19,17 +18,9 @@ var run_info = require('./app/models/run_info');
 var run_report_info = require('./app/models/run_report_info');
 var workflow_info = require('./app/models/workflow_info');
 
-// Initialize mongo config
-mongoose.connect('mongodb://' + config.mongo.host + '/' + config.mongo.database, function (err) {
-	if (err) console.error(err);
-});
-
 // configure app to use bodyParser() (get data from POST)
 app.use(bodyParser.urlencoded({extended: true}));
 app.use(bodyParser.json());
-
-// set the port
-var port = process.env.PORT || 8080;
 
 // API Routes
 // ========================================================
@@ -764,9 +755,17 @@ router.get('/donor_details/:_id', function(req, res) {
 // Register routes
 app.use('/api', router);
 
-// Start the server
-app.listen(port);
-console.log('Magic happens on port ' + port);
+// set the port, start the server
+module.exports = function(portInput) {
+    console.log(portInput);
+    if (portInput==undefined) {
+        var port = 8080;
+    } else {
+        var port = portInput;
+    }
+    app.listen(port);
+    console.log('Magic happens on port ' + port);
+}
 
 function findById(_id, collection) {
 	if (req.params._id) {

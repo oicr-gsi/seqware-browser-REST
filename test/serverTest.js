@@ -10,7 +10,7 @@ var expect = chai.expect;
 
 var test = require('unit.js');
 var server;
-
+var port = process.env.npm_config_port;
 var host = process.env.npm_config_mongo_db_for_testing;
 var randomNum = parseInt(Math.random()*100000);
 var database = "test_"+ randomNum;
@@ -53,31 +53,23 @@ describe('server API:', function() {
 			db.collection('RunInfo').insert({'status':"Completed", 'run_name': "100000_A100_10000_100AA_AA"});
 			db.collection('QC').insert(libraryArray, function() {
 				db.collection('LibraryInfo').insert(qcArray, function() {
-					var stream = fs.createWriteStream("./test/tmp/config.js");
-					stream.once('open', function(fd) {
-						var line1 = "var config = {};\n";
-						var line2 = "config.mongo = {};\n";
-						var line3 = "config.mongo.host = '"+host+"';\n";
-						var line4 = "config.mongo.database = '"+database+"';\n";
-						var line5 = "module.exports = config;\n";
-						var final = line1.concat(line2, line3, line4, line5);
-						stream.write(final);
-						stream.end();
-						server = require('../server');
-						db.close();
-						done();
+					mongoose.connect(mongourl, function (err) {
+						expect(err).to.equal(undefined);
 					});
+					server = require('../server')(port);
+					db.close();
+					done();
 				});
 			});
 		});
 	});
 	after ('drop database', function(done) {
 		if(host==undefined) {
-			test.fail('mongo address was not entered correctly: npm --mongo_db_for_testing=_______ test');
+			test.fail();
 		}
 		MongoClient.connect(mongourl, function(err, db) {
 			if(db==null) {
-				test.fail('incorrect address entered');
+				test.fail();
 			}
 			db.dropDatabase();
 			db.close();
@@ -96,7 +88,6 @@ describe('server API:', function() {
 		request("http://localhost:8080/api/run_details/100000_A100_10000_100AA_AA", function(error, response, body) {
 			expect(response.statusCode).to.equal(200);
 			var obj = JSON.parse(body);
-			console.log(obj[0]);
 			test.object(obj[0])
 				.hasProperty('_id', '100000_A100_10000_100AA_AA')
 				.hasProperty('run_qc_status', 'completed')

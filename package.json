@@ -1,22 +1,32 @@
 {
-  "name": "seqware-test",
+  "name": "seqware-browser-REST",
   "version": "0.0.0",
+  "private": false,
   "description": "",
-  "main": "test/serverTest.js",
+  "main": "server.js",
   "scripts": {
-    "test": "./node_modules/.bin/mocha --reporter spec"
+    "test": "./node_modules/.bin/mocha --reporter spec",
+    "start": "node app.js",
+    "start": "node server.js",
   },
   "author": "",
   "license": "BSD-2-Clause",
-  "dependencies": {
+  "devDependencies": {
     "unit.js": "~2.0.0",
     "mocha": "~2.5.3",
     "chai": "~3.5.0",
-    "request": "~2.74.0",
+    "request": "~2.74.0"
+  },
+  "dependencies": {
     "body-parser": "~1.15.1",
     "express": "~4.13.4",
     "mongoose": "~4.4.17",
     "fs": "~0.0.2",
-    "mongodb": "~2.1.7"
+    "mongodb": "~2.1.7",
+    "express": "^4.12.3",
+    "swagger": "~0.7.5",
+    "swagger-express-mw": "^0.1.0",
+    "request": "",
+    "swagger-tools": "~0.10.1"
   }
 }

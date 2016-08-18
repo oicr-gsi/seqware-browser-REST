@@ -49,7 +49,7 @@ describe('server API:', function() {
 			db.collection('RunReportData').insert({'run_name': "100000_A100_10000_100AA_AA", 'lanes': lanes});
 			db.collection('RunInfo').insert({'status':"Completed", 'run_name': "100000_A100_10000_100AA_AA"});
 
-			var stream = fs.createWriteStream("config.js");
+			var stream = fs.createWriteStream("./test/tmp/config.js");
 			stream.once('open', function(fd) {
 				var line1 = "var config = {};\n";
 				var line2 = "config.mongo = {};\n";

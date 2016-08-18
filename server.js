@@ -1008,12 +1008,19 @@ router.get('/run_list', function(req, res) {
         {$group: {
             _id: "$run_info_name",
             unique_projects: {$addToSet: "$library_head"},
-            projects: {$push: {name:"$library_head"}} }},
+            projects: {$push: "$library_head"} }},
         {$unwind: {path:"$unique_projects", preserveNullAndEmptyArrays: true}},
         {$unwind: {path:"$projects", preserveNullAndEmptyArrays: true}},
+        {$project: {
+            _id: 1,
+            unique_projects: 1,
+            projects: 1,
+            same_projects: {$cond: {if:{ $eq:["$unique_projects","$projects"]},
+                            then: 1,
+                            else: 0}} }},
         {$group: {
             _id: {run_name: "$_id", unique_projects: "$unique_projects" },
-            project_count: {$sum: 1} }},
+            project_count: {$sum: "$same_projects"} }},
         {$group: {
             _id: "$_id.run_name",
             projects: {$push: {
@@ -1079,7 +1086,6 @@ router.get('/run_details/:_id', function(req, res) {
         "barcode":{$first: "$barcode"},
         "project_info": {$first: "$project_info_name"},
         "run_info_name": {$first: "$run_info_name"},
-        "project_info_name": {$first: "$project_info_name"},
         "library_name": {$first: "$library_name"},
         "qc": {$push: "$qc"}}},
     { $project: {
@@ -1817,7 +1823,7 @@ router.get('/donor_details/:_id', function(req, res) {
         as: "external" }},
     { $unwind: {path: "$external", preserveNullAndEmptyArrays: true}},
     { $lookup: {
-        from: "links"
+        from: "links",
         localField: "project_info_name",
         foreignField: "project_name",
         as: "urls" }},

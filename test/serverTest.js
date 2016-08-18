@@ -11,18 +11,17 @@ var expect = chai.expect;
 var test = require('unit.js');
 var server;
 
-var input = process.env.npm_config_mongo_db_for_testing;
+var host = process.env.npm_config_mongo_db_for_testing;
 var randomNum = parseInt(Math.random()*100000);
 var database = "test_"+ randomNum;
 var mongourl = 'mongodb://' + host + '/'+ database;
-console.log("entering describe");
+
 describe('server API:', function() {
 	//preload database with data
-	if(input==undefined) {
-		test.fail('mongo address was not entered correctly: npm --mongo_db_for_testing=_______ test');
-	}
-	console.log("entering before");
 	before ('make config.js, connect to mongoDB, create collections', function(done) {
+		if(host==undefined) {
+			test.fail('mongo address was not entered correctly: npm --mongo_db_for_testing=_______ test');
+		}
 		MongoClient.connect(mongourl, function(err, db) {
 			if(db==null) {
 				test.fail('incorrect address entered');
@@ -50,28 +49,32 @@ describe('server API:', function() {
 				lanes[i]['r1_phasing'] = 0.11;
 				lanes[i]['r1_prephasing'] = 0.12;
 			}
-			db.collection('QC').insert(libraryArray);
-			db.collection('LibraryInfo').insert(qcArray);
 			db.collection('RunReportData').insert({'run_name': "100000_A100_10000_100AA_AA", 'lanes': lanes});
 			db.collection('RunInfo').insert({'status':"Completed", 'run_name': "100000_A100_10000_100AA_AA"});
-
-			var stream = fs.createWriteStream("./test/tmp/config.js");
-			stream.once('open', function(fd) {
-				var line1 = "var config = {};\n";
-				var line2 = "config.mongo = {};\n";
-				var line3 = "config.mongo.host = '"+host+"';\n";
-				var line4 = "config.mongo.database = '"+database+"';\n";
-				var line5 = "module.exports = config;\n";
-				var final = line1.concat(line2, line3, line4, line5);
-				stream.write(final);
-				stream.end();
-				server = require('../server');
-				db.close();
-				done();
+			db.collection('QC').insert(libraryArray, function() {
+				db.collection('LibraryInfo').insert(qcArray, function() {
+					var stream = fs.createWriteStream("./test/tmp/config.js");
+					stream.once('open', function(fd) {
+						var line1 = "var config = {};\n";
+						var line2 = "config.mongo = {};\n";
+						var line3 = "config.mongo.host = '"+host+"';\n";
+						var line4 = "config.mongo.database = '"+database+"';\n";
+						var line5 = "module.exports = config;\n";
+						var final = line1.concat(line2, line3, line4, line5);
+						stream.write(final);
+						stream.end();
+						server = require('../server');
+						db.close();
+						done();
+					});
+				});
 			});
 		});
 	});
 	after ('drop database', function(done) {
+		if(host==undefined) {
+			test.fail('mongo address was not entered correctly: npm --mongo_db_for_testing=_______ test');
+		}
 		MongoClient.connect(mongourl, function(err, db) {
 			if(db==null) {
 				test.fail('incorrect address entered');
@@ -90,20 +93,17 @@ describe('server API:', function() {
 		});		
 	});
 	it('get all of the required information from a normal query call', function(done) {
-		//mongoose.connect(mongourl, function (err) {
-			//if (err) console.error(err);
-			request("http://localhost:8080/api/run_details/100000_A100_10000_100AA_AA", function(error, response, body) {
-				expect(response.statusCode).to.equal(200);
-				var obj = JSON.parse(body);
-				test.object(obj[0])
-					.hasProperty('_id', '100000_A100_10000_100AA_AA')
-					.hasProperty('run_qc_status', 'completed')
-					.hasProperty('total_yield_sum', 250)
-					.hasProperty('total_libraries', 5)
-					.hasLength(9);
-				done();
-			});
-		//});
+		request("http://localhost:8080/api/run_details/100000_A100_10000_100AA_AA", function(error, response, body) {
+			expect(response.statusCode).to.equal(200);
+			var obj = JSON.parse(body);
+			console.log(obj[0]);
+			test.object(obj[0])
+				.hasProperty('_id', '100000_A100_10000_100AA_AA')
+				.hasProperty('run_qc_status', 'completed')
+				.hasProperty('total_yield_sum', 250)
+				.hasProperty('total_libraries', 5)
+			done();
+		});
 	});
 	//includes all projects listed under the run
 	it('multiple projects in a lane', function(done) {
@@ -118,7 +118,6 @@ describe('server API:', function() {
 					.hasProperty('run_qc_status', 'completed')
 					.hasProperty('total_yield_sum', 300)
 					.hasProperty('total_libraries', 6)
-					.hasLength(9);
 				test.object(obj[0]['lanes'][0]['projects'][1]).hasProperty('project_name', 'PCSI');
 				test.object(obj[0]['lanes'][0]['projects'][0]).hasProperty('project_name', 'EPIC');
 				done();
@@ -137,7 +136,6 @@ describe('server API:', function() {
 					.hasProperty('run_qc_status', 'in progress')
 					.hasProperty('total_yield_sum', 250)
 					.hasProperty('total_libraries', 6)
-					.hasLength(9);
 				done();
 			});
 		});
@@ -153,7 +151,6 @@ describe('server API:', function() {
 					.hasProperty('run_qc_status', 'in progress')
 					.hasProperty('total_yield_sum', 0)
 					.hasProperty('total_libraries', 6)
-					.hasLength(9);
 				done();
 			});
 		});

@@ -17,6 +17,8 @@ First install the required node modules then run the test:
 npm install
 export NODE_PATH=path_to_tmp/test
 npm --mongo_db_for_testing=host_address test
+//or
+npm --mongo_db_for_testing=host_address --port=port_number test
 ```
 ### Swagger documentation
 Before running, configure the db.js file to mongodb and the corresponding database.

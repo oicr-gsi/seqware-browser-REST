@@ -18,7 +18,7 @@ var mongourl = 'mongodb://' + host + '/'+ database;
 
 describe('server API:', function() {
 	//preload database with data
-	before ('make config.js, connect to mongoDB, create collections', function(done) {
+	before ('connect to mongoDB, create collections', function(done) {
 		if(host==undefined) {
 			test.fail('mongo address was not entered correctly: npm --mongo_db_for_testing=_______ test');
 		}
@@ -133,16 +133,16 @@ describe('server API:', function() {
 	});
 	it('no QC collection information', function(done) {
 		MongoClient.connect(mongourl, function(err, db) {
-			db.collection('QC').remove({});
-
-			request("http://localhost:8080/api/run_details/100000_A100_10000_100AA_AA", function(error, response, body) {
-				expect(response.statusCode).to.equal(200);
-				var obj = JSON.parse(body);
-				test.object(obj[0])
-					.hasProperty('run_qc_status', 'in progress')
-					.hasProperty('total_yield_sum', 0)
-					.hasProperty('total_libraries', 6)
-				done();
+			db.collection('QC').remove( function () {
+				request("http://localhost:8080/api/run_details/100000_A100_10000_100AA_AA", function(error, response, body) {
+					expect(response.statusCode).to.equal(200);
+					var obj = JSON.parse(body);
+					test.object(obj[0])
+						.hasProperty('run_qc_status', 'in progress')
+						.hasProperty('total_yield_sum', 0)
+						.hasProperty('total_libraries', 6)
+					done();
+				});
 			});
 		});
 	});

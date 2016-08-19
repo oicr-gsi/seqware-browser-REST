@@ -16,19 +16,11 @@ var project_info = require('./app/models/project_info');
 var run_info = require('./app/models/run_info');
 var run_report_info = require('./app/models/run_report_info');
 var workflow_info = require('./app/models/workflow_info');
-var SwaggerExpress = require('swagger-express-mw');
-var SwaggerUi = require('swagger-tools/middleware/swagger-ui');
-var swagger_app = require('express')();
 
 // configure app to use bodyParser() (get data from POST)
 app.use(bodyParser.urlencoded({extended: true}));
 app.use(bodyParser.json());
 
-module.exports = swagger_app; // for testing
-
-var swagger_config = {
-  appRoot: __dirname // required config
-};
 // API Routes
 // ========================================================
 var router = express.Router();
@@ -1837,20 +1829,9 @@ router.get('/donor_details/:_id', function(req, res) {
 // Register routes
 app.use('/api', router);
 
-SwaggerExpress.create(swagger_config, function(err, swaggerExpress) {
-  if (err) { throw err; }
-  //swagger ui
-  swagger_app.use(SwaggerUi(swaggerExpress.runner.swagger));
-  // install middleware
-  swaggerExpress.register(swagger_app);
-
-  var port = process.env.PORT || 10010;
-  swagger_app.listen(port, "0.0.0.0");
-});
-
 // set the port, start the server
 module.exports = function(portInput) {
-    console.log(portInput);
+    //console.log(portInput);
     if (portInput==undefined) {
         var port = 8080;
     } else {

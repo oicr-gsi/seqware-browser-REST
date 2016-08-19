@@ -2,7 +2,7 @@ var mongoose = require('mongoose');
 
 var host = process.env.npm_config_host;
 var database = process.env.npm_config_database;
-var port = process.env.npm_config_port;
+var port = process.env.npm_config_web_port;
 if (host!==undefined&&database!==undefined) {
 	mongoose.connect('mongodb://' + host + '/' + database, function (err) {
 		if (err) console.error(err);

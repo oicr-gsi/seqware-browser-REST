@@ -10,7 +10,7 @@ var expect = chai.expect;
 
 var test = require('unit.js');
 var server;
-var port = process.env.npm_config_port;
+var port = process.env.npm_config_web_port;
 var host = process.env.npm_config_mongo_db_for_testing;
 var randomNum = parseInt(Math.random()*100000);
 var database = "test_"+ randomNum;

@@ -10,9 +10,9 @@ REST endpoints to query mongodb for reporting app
 serverConnect.js starts the connection to mongodb, and then calls server.js which contains all the endpoints. the package.json points npm start to serverConnect.js. 
 ```
 npm install
-npm --host=host_address --database=database_name --port=port_number start
+npm --host=host_address --database=database_name --web_port=port_number start
 ```
-Including the port number is optional. It will otherwise be set to port 8080.
+Including the port number for the url is optional. It will otherwise be set to port 8080.
 ---
 ### Testing
 First install the required node modules then run the test: 
@@ -21,7 +21,7 @@ npm install
 export NODE_PATH=path_to_tmp/test
 npm --mongo_db_for_testing=host_address test
 //or
-npm --mongo_db_for_testing=host_address --port=port_number test
+npm --mongo_db_for_testing=host_address --web_port=port_number test
 ```
 ### Swagger Documentation
 Before running, configure the db.js file to mongodb and the corresponding database.

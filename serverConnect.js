@@ -1,7 +1,8 @@
 var mongoose = require('mongoose');
 var host = process.env.npm_config_host;
 var database = process.env.npm_config_database;
-var port = process.env.npm_config_web_port;
+var apiport = process.env.npm_config_api_port;
+var address = process.env.npm_config_web_address;
 var SwaggerExpress = require('swagger-express-mw');
 var SwaggerUi = require('swagger-tools/middleware/swagger-ui');
 var swagger_app = require('express')();
@@ -28,7 +29,7 @@ if (host!==undefined&&database!==undefined) {
 	mongoose.connect('mongodb://' + host + '/' + database, function (err) {
 		if (err) console.error(err);
 	});
-	var server = require('./server')(port);
+	var server = require('./server')(address, apiport);
 } else {
 	//incase it is swagger, variables not treated the same as with npm
 	host=process.env.host;
@@ -37,7 +38,7 @@ if (host!==undefined&&database!==undefined) {
 		mongoose.connect('mongodb://' + host + '/' + database, function (err) {
 			if (err) console.error(err);
 		});
-		var server = require('./server')(port);
+		var server = require('./server')(address, apiport);
 	} else {
 		console.log("arguments were not entered correctly. The format should be: npm --host=____ --database=d____ --port=____ start");
 	}

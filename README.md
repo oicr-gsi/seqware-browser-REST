@@ -10,7 +10,7 @@ REST endpoints to query mongodb for reporting app
 serverConnect.js starts the connection to mongodb, and then calls server.js which contains all the endpoints. the package.json points npm start to serverConnect.js. 
 ```
 npm install
-npm --host=host_address --database=database_name --web_port=port_number start
+npm --host=host_address --database=database_name --api_port=port_number web_address=host_and_port_of_landing_server start
 ```
 Including the port number for the url is optional. It will otherwise be set to port 8080.
 ---

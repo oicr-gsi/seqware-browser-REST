@@ -47,7 +47,6 @@ router.get('/current_workflow_runs', function(req, res) {
 	});
 });
 
-
 // project_info
 // all projects
 router.get('/project_info', function(req, res) {
@@ -1830,7 +1829,7 @@ router.get('/donor_details/:_id', function(req, res) {
 app.use('/api', router);
 
 // set the port, start the server
-module.exports = function(portInput) {
+module.exports = function(address, portInput) {
     //console.log(portInput);
     if (portInput==undefined) {
         var port = 8080;
@@ -1839,6 +1838,17 @@ module.exports = function(portInput) {
     }
     app.listen(port);
     console.log('Magic happens on port ' + port);
+    if (address==undefined) {
+        app.use(function (req, res, next) {
+        res.setHeader('Access-Control-Allow-Origin', 'http://localhost:8081');
+            next();
+        });
+    } else {
+        app.use(function (req, res, next) {
+        res.setHeader('Access-Control-Allow-Origin', address);
+            next();
+        });
+    }
 }
 
 function findById(_id, collection) {

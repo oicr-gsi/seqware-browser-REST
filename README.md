@@ -28,11 +28,12 @@ npm --mongo_db_for_testing=host_address test
 //or
 npm --mongo_db_for_testing=host_address --web_port=port_number test
 ```
+---
 ### Swagger Documentation
 queries.js points to port 8080 to retrieve the endpoints from server.js, this may be changed depending on where server.js is running.
 To run the documentation (assuming set up was complete):
 ```
-host=host_address database=database_name swagger project start
+host=host_address database=database_name --api_port=8080 swagger project start
 ```
 as environment variables, you can also add PORT for where swagger will end up, and api_port for where server.js will run from. (if changing web_port, queries.js must be updated too)
 A link will pop up in the command line. go to that link and add /docs to the end.

@@ -1840,16 +1840,19 @@ module.exports = function(address, portInput) {
     console.log('Magic happens on port ' + port);
     if (address==undefined) {
         app.use(function (req, res, next) {
-        res.setHeader('Access-Control-Allow-Origin', 'http://localhost:8081');
+        res.setHeader('Access-Control-Allow-Origin', 'http://localhost:8080');
             next();
         });
+        console.log("access given to: http://localhost:8080");
     } else {
         app.use(function (req, res, next) {
         res.setHeader('Access-Control-Allow-Origin', address);
             next();
         });
+        console.log("access given to: "+address);
     }
 }
+
 
 function findById(_id, collection) {
 	if (req.params._id) {

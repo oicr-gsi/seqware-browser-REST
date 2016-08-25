@@ -6,15 +6,18 @@ REST endpoints to query mongodb for reporting app
 ###Requirements
 - mongodb version must be at least 3.0 to be able to perform $lookup in the aggregation
 - node.js must be installed, followed by npm
+
+---
 ### Set Up and Running
 serverConnect.js starts the connection to mongodb, and then calls server.js which contains all the endpoints. package.json points npm start to serverConnect.js. 
 ```
 npm install
 npm --host=host_address --database=database_name --api_port=port_number web_address=host_and_port_of_landing_server start
 ```
--Including the port number for the url is optional. It will otherwise be set to port 8081.
--The web address should be pointing to where the application itself is running, otherwise it will be set to http://localhost:8080.
--Mongo host and address must be provided through the environment variables.
+- Including the port number for the url is optional. It will otherwise be set to port 8081.
+- The web address should be pointing to where the application itself is running, otherwise it will be set to http://localhost:8080.
+- Mongo host and address must be provided through the environment variables.
+
 ---
 ### Testing
 First install the required node modules then run the test: 

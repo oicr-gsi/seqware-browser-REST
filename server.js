@@ -2,11 +2,11 @@
 
 // Set up
 // Call required packages
-var config = require('config.js')
 var express = require('express');
+var cors = require('cors')
+
 var app = express();
 var bodyParser = require('body-parser');
-var mongoose = require('mongoose');
 var current_workflow_runs = require('./app/models/current_workflow_runs');
 var donor_info = require('./app/models/donor_info');
 var file_info = require('./app/models/file_info');
@@ -18,27 +18,13 @@ var project_info = require('./app/models/project_info');
 var run_info = require('./app/models/run_info');
 var run_report_info = require('./app/models/run_report_info');
 var workflow_info = require('./app/models/workflow_info');
-var SwaggerExpress = require('swagger-express-mw');
-var SwaggerUi = require('swagger-tools/middleware/swagger-ui');
-var swagger_app = require('express')();
 
-// Initialize mongo config
-mongoose.connect('mongodb://' + config.mongo.host + '/' + config.mongo.database, function (err) {
-	if (err) console.error(err);
-});
+app.use(cors());
 
 // configure app to use bodyParser() (get data from POST)
 app.use(bodyParser.urlencoded({extended: true}));
 app.use(bodyParser.json());
 
-// set the port
-var port = process.env.PORT || 8080;
-
-module.exports = swagger_app; // for testing
-
-var swagger_config = {
-  appRoot: __dirname // required config
-};
 // API Routes
 // ========================================================
 var router = express.Router();
@@ -64,7 +50,6 @@ router.get('/current_workflow_runs', function(req, res) {
 		res.json(docs);
 	});
 });
-
 
 // project_info
 // all projects
@@ -1008,12 +993,19 @@ router.get('/run_list', function(req, res) {
         {$group: {
             _id: "$run_info_name",
             unique_projects: {$addToSet: "$library_head"},
-            projects: {$push: {name:"$library_head"}} }},
+            projects: {$push: "$library_head"} }},
         {$unwind: {path:"$unique_projects", preserveNullAndEmptyArrays: true}},
         {$unwind: {path:"$projects", preserveNullAndEmptyArrays: true}},
+        {$project: {
+            _id: 1,
+            unique_projects: 1,
+            projects: 1,
+            same_projects: {$cond: {if:{ $eq:["$unique_projects","$projects"]},
+                            then: 1,
+                            else: 0}} }},
         {$group: {
             _id: {run_name: "$_id", unique_projects: "$unique_projects" },
-            project_count: {$sum: 1} }},
+            project_count: {$sum: "$same_projects"} }},
         {$group: {
             _id: "$_id.run_name",
             projects: {$push: {
@@ -1079,7 +1071,6 @@ router.get('/run_details/:_id', function(req, res) {
         "barcode":{$first: "$barcode"},
         "project_info": {$first: "$project_info_name"},
         "run_info_name": {$first: "$run_info_name"},
-        "project_info_name": {$first: "$project_info_name"},
         "library_name": {$first: "$library_name"},
         "qc": {$push: "$qc"}}},
     { $project: {
@@ -1817,7 +1808,7 @@ router.get('/donor_details/:_id', function(req, res) {
         as: "external" }},
     { $unwind: {path: "$external", preserveNullAndEmptyArrays: true}},
     { $lookup: {
-        from: "links"
+        from: "links",
         localField: "project_info_name",
         foreignField: "project_name",
         as: "urls" }},
@@ -1847,20 +1838,18 @@ router.get('/donor_details/:_id', function(req, res) {
 // Register routes
 app.use('/api', router);
 
-SwaggerExpress.create(swagger_config, function(err, swaggerExpress) {
-  if (err) { throw err; }
-  //swagger ui
-  swagger_app.use(SwaggerUi(swaggerExpress.runner.swagger));
-  // install middleware
-  swaggerExpress.register(swagger_app);
+// set the port, start the server
+module.exports = function(portInput) {
+    var port;
+    if (portInput==undefined) {
+        port = 8081;
+    } else {
+        port = portInput;
+    }
+    app.listen(port);
+    console.log('Magic happens on port ' + port);
+}
 
-  var port = process.env.PORT || 10010;
-  swagger_app.listen(port, "0.0.0.0");
-});
-
-// Start the server
-app.listen(port);
-console.log('Magic happens on port ' + port);
 
 function findById(_id, collection) {
 	if (req.params._id) {

@@ -1,4 +1,4 @@
-var	mongodb = require('mongodb');
+var mongodb = require('mongodb');
 var MongoClient = mongodb.MongoClient;
 var mongoose = require('mongoose');
 var fs = require('fs');
@@ -10,11 +10,12 @@ var expect = chai.expect;
 
 var test = require('unit.js');
 var server;
-var port = process.env.npm_config_web_port;
-var host = process.env.npm_config_mongo_db_for_testing;
+var port = process.env.npm_config_web_port || '8081';
+var host = process.env.npm_config_mongo_db_for_testing || 'localhost';
 var randomNum = parseInt(Math.random()*100000);
 var database = "test_"+ randomNum;
 var mongourl = 'mongodb://' + host + '/'+ database;
+var api = "http://"+host+":"+port+"/api/";
 
 describe('server API:', function() {
 	//preload database with data
@@ -77,7 +78,7 @@ describe('server API:', function() {
 		});
 	});
 	it('connected to server.js', function(done) {
-		request("http://localhost:8080/api/", function(error, response, body) {
+		request(api, function(error, response, body) {
 			expect(response.statusCode).to.equal(200);
 			var obj = JSON.parse(body);
 			test.object(obj).hasProperty('message', "yay!! welcome to the api!");
@@ -85,7 +86,7 @@ describe('server API:', function() {
 		});		
 	});
 	it('get all of the required information from a normal query call', function(done) {
-		request("http://localhost:8080/api/run_details/100000_A100_10000_100AA_AA", function(error, response, body) {
+		request(api + "run_details/100000_A100_10000_100AA_AA", function(error, response, body) {
 			expect(response.statusCode).to.equal(200);
 			var obj = JSON.parse(body);
 			test.object(obj[0])
@@ -102,15 +103,15 @@ describe('server API:', function() {
 			db.collection('QC').insert({'yield': 50, 'reads': 50, 'iusswid': "1234"});
 			db.collection('LibraryInfo').insert({'library_name': "11_name", 'iusswid': "1234", 'lane': 1, 'run_info_name': "100000_A100_10000_100AA_AA" , 'project_info_name': "EPIC"});
 			
-			request("http://localhost:8080/api/run_details/100000_A100_10000_100AA_AA", function(error, response, body) {
+			request(api + "/run_details/100000_A100_10000_100AA_AA", function(error, response, body) {
 				expect(response.statusCode).to.equal(200);
 				var obj = JSON.parse(body);
 				test.object(obj[0])
 					.hasProperty('run_qc_status', 'completed')
 					.hasProperty('total_yield_sum', 300)
 					.hasProperty('total_libraries', 6)
-				test.object(obj[0]['lanes'][0]['projects'][1]).hasProperty('project_name', 'PCSI');
-				test.object(obj[0]['lanes'][0]['projects'][0]).hasProperty('project_name', 'EPIC');
+				test.object(obj[0]['lanes'][0]['projects'][1]).hasProperty('project_name', 'EPIC');
+				test.object(obj[0]['lanes'][0]['projects'][0]).hasProperty('project_name', 'PCSI');
 				done();
 			});
 		});
@@ -120,7 +121,7 @@ describe('server API:', function() {
 		MongoClient.connect(mongourl, function(err, db) {
 			db.collection('QC').remove({'iusswid': "2123"});
 
-			request("http://localhost:8080/api/run_details/100000_A100_10000_100AA_AA", function(error, response, body) {
+			request(api + "run_details/100000_A100_10000_100AA_AA", function(error, response, body) {
 				expect(response.statusCode).to.equal(200);
 				var obj = JSON.parse(body);
 				test.object(obj[0])
@@ -134,7 +135,7 @@ describe('server API:', function() {
 	it('no QC collection information', function(done) {
 		MongoClient.connect(mongourl, function(err, db) {
 			db.collection('QC').remove( function () {
-				request("http://localhost:8080/api/run_details/100000_A100_10000_100AA_AA", function(error, response, body) {
+				request(api + "run_details/100000_A100_10000_100AA_AA", function(error, response, body) {
 					expect(response.statusCode).to.equal(200);
 					var obj = JSON.parse(body);
 					test.object(obj[0])
@@ -148,13 +149,13 @@ describe('server API:', function() {
 	});
 	//returns correct errors
 	it('run is not found in the LibraryInfo collection', function(done) {
-		request("http://localhost:8080/api/run_details/100000_A100_10000_100AA_BB", function(error, response, body) {
+		request(api + "run_details/100000_A100_10000_100AA_BB", function(error, response, body) {
 			expect(response.statusCode).to.equal(404);
 			done();
 		});
 	});
 	it('no run name given', function(done) {
-		request("http://localhost:8080/api/run_details", function(error, response, body) {
+		request(api + "run_details", function(error, response, body) {
 			expect(response.statusCode).to.equal(400);
 			done();
 		});

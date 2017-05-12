@@ -6,13 +6,23 @@ var address = process.env.npm_config_web_address;
 var SwaggerExpress = require('swagger-express-mw');
 var SwaggerUi = require('swagger-tools/middleware/swagger-ui');
 var swagger_app = require('express')();
+var fs = require('fs');
+var yaml = require('js-yaml');
 
 process.env.SUPPRESS_NO_CONFIG_WARNING = 'y';
 
 module.exports = swagger_app; // for testing
 
+try {
+  var swaggerObject = yaml.safeLoad(fs.readFileSync('./api/swagger/swagger.yaml', 'utf8'));
+  swaggerObject.host = address + ':' + apiport;
+} catch (err) {
+  console.log(err);
+}
+
 var swagger_config = {
-  appRoot: __dirname // required config
+  appRoot: __dirname,
+  swagger: swaggerObject
 };
 
 SwaggerExpress.create(swagger_config, function(err, swaggerExpress) {
@@ -29,7 +39,7 @@ if (host!==undefined&&database!==undefined) {
 	mongoose.connect('mongodb://' + host + '/' + database, function (err) {
 		if (err) console.error(err);
 	});
-	var server = require('./server')(address, apiport);
+	var server = require('./server')(apiport);
 } else {
 	//incase it is swagger, variables not treated the same as with npm
 	host=process.env.host;
@@ -38,7 +48,7 @@ if (host!==undefined&&database!==undefined) {
 		mongoose.connect('mongodb://' + host + '/' + database, function (err) {
 			if (err) console.error(err);
 		});
-		var server = require('./server')(address, apiport);
+		var server = require('./server')(apiport);
 	} else {
 		console.log("arguments were not entered correctly. The format should be: npm --host=____ --database=d____ --port=____ start");
 	}

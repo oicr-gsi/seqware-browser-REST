@@ -3,6 +3,8 @@
 // Set up
 // Call required packages
 var express = require('express');
+var cors = require('cors')
+
 var app = express();
 var bodyParser = require('body-parser');
 var current_workflow_runs = require('./app/models/current_workflow_runs');
@@ -16,6 +18,8 @@ var project_info = require('./app/models/project_info');
 var run_info = require('./app/models/run_info');
 var run_report_info = require('./app/models/run_report_info');
 var workflow_info = require('./app/models/workflow_info');
+
+app.use(cors());
 
 // configure app to use bodyParser() (get data from POST)
 app.use(bodyParser.urlencoded({extended: true}));
@@ -1835,28 +1839,15 @@ router.get('/donor_details/:_id', function(req, res) {
 app.use('/api', router);
 
 // set the port, start the server
-module.exports = function(address, portInput) {
-    //console.log(portInput);
+module.exports = function(portInput) {
+    var port;
     if (portInput==undefined) {
-        var port = 8081;
+        port = 8081;
     } else {
-        var port = portInput;
+        port = portInput;
     }
     app.listen(port);
     console.log('Magic happens on port ' + port);
-    if (address==undefined) {
-        app.use(function (req, res, next) {
-        res.setHeader('Access-Control-Allow-Origin', 'http://localhost:8080');
-            next();
-        });
-        console.log("access given to: http://localhost:8080");
-    } else {
-        app.use(function (req, res, next) {
-        res.setHeader('Access-Control-Allow-Origin', address);
-            next();
-        });
-        console.log("access given to: "+address);
-    }
 }
 
 

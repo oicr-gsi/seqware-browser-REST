@@ -2,8 +2,7 @@ swagger: "2.0"
 info:
   version: "0.0.1"
   title: Seqware-Browser-REST Queries
-host: localhost:10010 #10.30.128.97
-basePath: /
+basePath: /api
 schemes:
   - http
   - https

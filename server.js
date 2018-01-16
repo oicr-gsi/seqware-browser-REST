@@ -42,15 +42,9 @@ const swagger_config = {
 // ========================================================
 const router = express.Router();
 
-// middleware to use for all requests
-router.use(function (req, res, next) {
-  console.log('Something is happening'); //log
-  next(); // make sure we go to the next routes
-});
-
 // Test
 router.get('/', function (req, res, next) {
-  res.json({message: 'yay!! welcome to the api!'});
+  res.status(200).json({message: 'yay!! welcome to the api!'});
   next();
 });
 
@@ -1576,6 +1570,17 @@ router.get('/donor_details/:_id', function (req, res, next) {
 // ========================================================
 // Register routes
 app.use('/api', router);
+
+const errorHandler = (err, req, res, next) => {
+  if (res.headersSent) {
+    return next(err);
+  }
+  res.status(err.status || 500);
+  res.json({ 'errors': err.error });
+  res.end();
+  next();
+};
+app.use(errorHandler);
 
 SwaggerExpress.create(swagger_config, function (err, swaggerExpress) {
   if (err) { throw err; }

@@ -1,10 +1,10 @@
 // app/models/run_report_info.js
 
-var mongoose = require('mongoose');
-var Schema = mongoose.Schema;
+const mongoose = require('mongoose');
+const Schema = mongoose.Schema;
 
-var RunSchema = new Schema({
-	run_name: {type: String, unique:true},
+const RunReportSchema = new Schema({
+  run_name: {type: String, unique:true},
 });
 
-module.exports = mongoose.model('run_report_info', RunSchema, 'RunReportData');
+module.exports = mongoose.model('run_report_info', RunReportSchema, 'RunReportData');

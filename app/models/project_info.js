@@ -1,11 +1,11 @@
 // app/models/project_info.js
 
-var mongoose = require('mongoose');
-var Schema = mongoose.Schema;
+const mongoose = require('mongoose');
+const Schema = mongoose.Schema;
 
-var ProjectSchema = new Schema({
-	project_name: {type: String, unique:true},
-	start_tstmp: Date,
+const ProjectSchema = new Schema({
+  project_name: {type: String, unique:true},
+  start_tstmp: Date,
 });
 
 module.exports = mongoose.model('project_info', ProjectSchema, 'ProjectInfo');

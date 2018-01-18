@@ -1,6 +1,6 @@
 'use strict';
-// Call required packages
-const config = require('./config.js');
+
+require('dotenv').config();
 const express = require('express');
 const app = express();
 const bodyParser = require('body-parser');
@@ -22,7 +22,7 @@ const workflow_info = require('./app/models/workflow_info');
 const utils = require('./app/controllers/controllerUtils');
 
 // Initialize mongo config
-mongoose.connect('mongodb://' + config.mongo.host + '/' + config.mongo.database, function (err) {
+mongoose.connect('mongodb://' + process.env.MONGO_HOST + '/' + process.env.MONGO_DB, function (err) {
   if (err) console.error(err);
 });
 

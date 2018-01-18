@@ -64,6 +64,7 @@ const formatDateForMongo = (dateString) => {
 
 // Routes that end in current_workflow_runs
 // all current workflow runs
+// ?? https://www.hpc.oicr.on.ca/archive/web/seqwareReport/seqwareReport.html ?
 router.get('/current_workflow_runs', function (req, res, next) {
   current_workflow_runs.find({})
     .then(docs => utils.returnDocs(docs, res, next))
@@ -73,6 +74,7 @@ router.get('/current_workflow_runs', function (req, res, next) {
 
 // project_info
 // all projects
+// ??
 router.get('/project_info', function (req, res, next) {
   project_info.find({})
     .then(docs => utils.returnDocs(docs, res, next))
@@ -80,6 +82,7 @@ router.get('/project_info', function (req, res, next) {
 });
 
 // one project
+// ??
 router.get('/project_info/:_id', function (req, res, next) {
   utils.returnIfNoParam('project name', req.params._id, next);
   project_info.find({project_name: req.params._id})
@@ -88,6 +91,7 @@ router.get('/project_info/:_id', function (req, res, next) {
 });
 
 // libraries per project
+// ??
 router.get('/project_info/:_id/libraries', function (req, res, next) {
   utils.returnIfNoParam('project name', req.params._id, next);
   library_info.find({ProjectInfo_name: req.params._id})
@@ -97,6 +101,7 @@ router.get('/project_info/:_id/libraries', function (req, res, next) {
 
 // donor_info
 // all donors
+// ??
 router.get('/donor_info', function (req, res, next) {
   donor_info.find({})
     .then(docs => utils.returnDocs(docs, res, next))
@@ -104,6 +109,7 @@ router.get('/donor_info', function (req, res, next) {
 });
 
 // one donor
+// ??
 router.get('/donor_info/:_id', function (req, res, next) {
   utils.returnIfNoParam('donor name', req.params._id, next);
   donor_info.find({donor_name: req.params._id})
@@ -112,6 +118,7 @@ router.get('/donor_info/:_id', function (req, res, next) {
 });
 
 // libraries per donor
+// ??
 router.get('/donor_info/:_id/libraries', function (req, res, next) {
   utils.returnIfNoParam('donor name', req.params._id, next);
   library_info.find({DonorInfo_name: req.params._id})
@@ -121,6 +128,7 @@ router.get('/donor_info/:_id/libraries', function (req, res, next) {
 
 // library_info
 // all libraries
+// ??
 router.get('/library_info', function (req, res, next) {
   library_info.find({})
     .then(docs => utils.returnDocs(docs, res, next))
@@ -128,6 +136,7 @@ router.get('/library_info', function (req, res, next) {
 });
 
 // one library
+// ??
 router.get('/library_info/:_id', function (req, res, next) {
   utils.returnIfNoParam('library name', req.params._id, next);
   library_info.find({library_seqname: req.params._id})
@@ -136,6 +145,7 @@ router.get('/library_info/:_id', function (req, res, next) {
 });
 
 // count the number oflibraries in a run
+// ??
 router.get('/run_count/:_id', function (req, res, next) {
   utils.returnIfNoParam('run name', req.params._id, next);
   library_info.aggregate([
@@ -151,7 +161,7 @@ router.get('/run_count/:_id', function (req, res, next) {
 // workflows per library
 router.get('/library_info/:_id/workflows', function (req, res, next) {
   utils.returnIfNoParam('library name', req.params._id, next);
-  library_info.find({library_seqname: req.params._id}, 'WorkflowInfo_accession')
+  library_info.find({library_name: req.params._id}, 'WorkflowInfo_accession')
     .then((docs) => {
       if (docs[0] && docs[0].WorkflowInfo_accession) {
         workflow_info.find({sw_accession: {$in: docs[0].WorkflowInfo_accession}})
@@ -1343,6 +1353,9 @@ router.get('/project_status_summary', function (req, res, next) {
 });
 
 //per one project name
+// TODO: is this even correct? Donors are not being separated out.
+// should $library_head return identity name or ABCD_0001_nn_n rather than project name?
+// https://www.hpc.oicr.on.ca/archive/web/seqwareBrowser/projects/AndrewsOneoffExperiments/AndrewsOneoffExperiments.html
 router.get('/project_status_summary/:_id', function (req, res, next) {
   utils.returnIfNoParam('project name', req.params._id, next);
   library_info.aggregate([
@@ -1390,6 +1403,8 @@ router.get('/donor_workflows', function (req, res, next) {
 });
 
 //per one donor name
+// https://www.hpc.oicr.on.ca/archive/web/seqwareBrowser/projects/AndrewsOneoffExperiments/AOE_0047/AOE_0047.html
+// section "Workflow Runs"
 router.get('/donor_workflows/:_id', function (req, res, next) {
   utils.returnIfNoParam('donor name', req.params._id, next);
   library_info.aggregate([
@@ -1446,6 +1461,8 @@ router.get('/donor_workflows_summary', function (req, res, next) {
 });
 
 //per one donor name
+// https://www.hpc.oicr.on.ca/archive/web/seqwareBrowser/projects/AndrewsOneoffExperiments/AOE_0047/AOE_0047.html
+// section "IUSs"
 router.get('/donor_workflows_summary/:_id', function (req, res, next) {
   utils.returnIfNoParam('donor name', req.params._id, next);
   library_info.aggregate([
@@ -1537,6 +1554,7 @@ router.get('/donor_details', function (req, res, next) {
 });
 
 //per one run name
+// ?? what is this for?
 router.get('/donor_details/:_id', function (req, res, next) {
   utils.returnIfNoParam('donor name', req.params._id, next);
   library_info.aggregate([

@@ -1,6 +1,6 @@
 'use strict';
 // Call required packages
-const config = require('config.js');
+const config = require('./config.js');
 const express = require('express');
 const app = express();
 const bodyParser = require('body-parser');
@@ -16,9 +16,9 @@ const project_info = require('./app/models/project_info');
 const run_info = require('./app/models/run_info');
 const run_report_info = require('./app/models/run_report_info');
 const workflow_info = require('./app/models/workflow_info');
-const SwaggerExpress = require('swagger-express-mw');
-const SwaggerUi = require('swagger-tools/middleware/swagger-ui');
-const swagger_app = require('express')();
+// const SwaggerExpress = require('swagger-express-mw');
+// const SwaggerUi = require('swagger-tools/middleware/swagger-ui');
+// const swagger_app = require('express')();
 const utils = require('./app/controllers/controllerUtils');
 
 // Initialize mongo config
@@ -30,10 +30,7 @@ mongoose.connect('mongodb://' + config.mongo.host + '/' + config.mongo.database,
 app.use(bodyParser.urlencoded({extended: true}));
 app.use(bodyParser.json());
 
-// set the port
-const port = process.env.PORT || 8080;
-
-module.exports = swagger_app; // for testing
+//module.exports = swagger_app; // for testing
 
 const swagger_config = {
   appRoot: __dirname // required config
@@ -48,13 +45,28 @@ router.get('/', function (req, res, next) {
   next();
 });
 
+// helper methods
+const zeropad = (num) => {
+  return ('0' + num).slice(-2);
+};
+const formatDateForMongo = (dateString) => {
+  const date = new Date(dateString);
+  if (date == 'Invalid Date') return undefined;
+  return date.getFullYear() + 
+            '-' + zeropad(date.getMonth() +1) +
+            '-' + zeropad(date.getDate()) +
+            ' ' + zeropad(date.getHours()) +
+            ':' + zeropad(date.getMinutes()) +
+            ':' + zeropad(date.getSeconds());
+};
+
 //===========================================================
 
 // Routes that end in current_workflow_runs
 // all current workflow runs
 router.get('/current_workflow_runs', function (req, res, next) {
   current_workflow_runs.find({})
-    .then(docs => utils.returnDocs(docs, res, next, 'current workflow runs'))
+    .then(docs => utils.returnDocs(docs, res, next))
     .catch(err => next(utils.generateError(500, err)));
 });
 
@@ -63,7 +75,7 @@ router.get('/current_workflow_runs', function (req, res, next) {
 // all projects
 router.get('/project_info', function (req, res, next) {
   project_info.find({})
-    .then(docs => utils.returnDocs(docs, res, next, 'projects'))
+    .then(docs => utils.returnDocs(docs, res, next))
     .catch(err => next(utils.generateError(500, err)));
 });
 
@@ -71,7 +83,7 @@ router.get('/project_info', function (req, res, next) {
 router.get('/project_info/:_id', function (req, res, next) {
   utils.returnIfNoParam('project name', req.params._id, next);
   project_info.find({project_name: req.params._id})
-    .then(docs => utils.returnDocs(docs, res, next, 'project'))
+    .then(docs => utils.returnDocs(docs, res, next))
     .catch(err => next(utils.generateError(500, err)));
 });
 
@@ -79,7 +91,7 @@ router.get('/project_info/:_id', function (req, res, next) {
 router.get('/project_info/:_id/libraries', function (req, res, next) {
   utils.returnIfNoParam('project name', req.params._id, next);
   library_info.find({ProjectInfo_name: req.params._id})
-    .then(docs => utils.returnDocs(docs, res, next, 'project libraries'))
+    .then(docs => utils.returnDocs(docs, res, next))
     .catch(err => next(utils.generateError(500, err)));
 });
 
@@ -87,7 +99,7 @@ router.get('/project_info/:_id/libraries', function (req, res, next) {
 // all donors
 router.get('/donor_info', function (req, res, next) {
   donor_info.find({})
-    .then(docs => utils.returnDocs(docs, res, next, 'donors'))
+    .then(docs => utils.returnDocs(docs, res, next))
     .catch(err => next(utils.generateError(500, err)));
 });
 
@@ -95,7 +107,7 @@ router.get('/donor_info', function (req, res, next) {
 router.get('/donor_info/:_id', function (req, res, next) {
   utils.returnIfNoParam('donor name', req.params._id, next);
   donor_info.find({donor_name: req.params._id})
-    .then(docs => utils.returnDocs(docs, res, next, 'donor'))
+    .then(docs => utils.returnDocs(docs, res, next))
     .catch(err => next(utils.generateError(500, err)));
 });
 
@@ -103,7 +115,7 @@ router.get('/donor_info/:_id', function (req, res, next) {
 router.get('/donor_info/:_id/libraries', function (req, res, next) {
   utils.returnIfNoParam('donor name', req.params._id, next);
   library_info.find({DonorInfo_name: req.params._id})
-    .then(docs => utils.returnDocs(docs, res, next, 'libraries for donor'))
+    .then(docs => utils.returnDocs(docs, res, next))
     .catch(err => next(utils.generateError(500, err)));
 });
 
@@ -111,7 +123,7 @@ router.get('/donor_info/:_id/libraries', function (req, res, next) {
 // all libraries
 router.get('/library_info', function (req, res, next) {
   library_info.find({})
-    .then(docs => utils.returnDocs(docs, res, next, 'libraries'))
+    .then(docs => utils.returnDocs(docs, res, next))
     .catch(err => next(utils.generateError(500, err)));
 });
 
@@ -119,7 +131,7 @@ router.get('/library_info', function (req, res, next) {
 router.get('/library_info/:_id', function (req, res, next) {
   utils.returnIfNoParam('library name', req.params._id, next);
   library_info.find({library_seqname: req.params._id})
-    .then(docs => utils.returnDocs(docs, res, next, 'library'))
+    .then(docs => utils.returnDocs(docs, res, next))
     .catch(err => next(utils.generateError(500, err)));
 });
 
@@ -127,25 +139,26 @@ router.get('/library_info/:_id', function (req, res, next) {
 router.get('/run_count/:_id', function (req, res, next) {
   utils.returnIfNoParam('run name', req.params._id, next);
   library_info.aggregate([
-    { $match: { run_info_name: req.params._id}},
+    { $match: { RunInfo_name: req.params._id}},
     {$group: {
       _id: null,
       count: {$sum: 1} }}
   ])
-    .then(docs => utils.returnDocs(docs, res, next, 'libraries for run'))
+    .then(docs => utils.returnDocs(docs, res, next))
     .catch(err => next(utils.generateError(500, err)));
 });
 
 // workflows per library
 router.get('/library_info/:_id/workflows', function (req, res, next) {
   utils.returnIfNoParam('library name', req.params._id, next);
-  library_info.find({library_seqname: req.params._id}, 'WorkflowInfo_id')
+  library_info.find({library_seqname: req.params._id}, 'WorkflowInfo_accession')
     .then((docs) => {
-      if (docs[0] && docs[0].WorkflowInfo_id) {
-        workflow_info.find({_id: {$in: docs[0].WorkflowInfo_id}})
-          .then(workflows => utils.returnDocs(workflows, res, next, 'workflows for library'));
+      if (docs[0] && docs[0].WorkflowInfo_accession) {
+        workflow_info.find({sw_accession: {$in: docs[0].WorkflowInfo_accession}})
+          .then(workflows => utils.returnDocs(workflows, res, next))
+          .catch(err => next(utils.generateError(500, err)));
       } else {
-        utils.returnDocs(docs, res, next, 'libraries');
+        utils.returnDocs([], res, next);
       }
     });
 });
@@ -154,7 +167,7 @@ router.get('/library_info/:_id/workflows', function (req, res, next) {
 // all runs
 router.get('/run_info', function (req, res, next) {
   run_info.find({})
-    .then(docs => utils.returnDocs(docs, res, next, 'runs'))
+    .then(docs => utils.returnDocs(docs, res, next))
     .catch(err => next(utils.generateError(500, err)));
 });
 
@@ -162,7 +175,7 @@ router.get('/run_info', function (req, res, next) {
 router.get('/run_info/:_id', function (req, res, next) {
   utils.returnIfNoParam('run name', req.params._id, next);
   run_info.find({run_name: req.params._id})
-    .then(docs => utils.returnDocs(docs, res, next, 'run'))
+    .then(docs => utils.returnDocs(docs, res, next))
     .catch(err => next(utils.generateError(500, err)));
 });
 
@@ -170,24 +183,24 @@ router.get('/run_info/:_id', function (req, res, next) {
 router.get('/run_info/:_id/libraries', function (req, res, next) {
   utils.returnIfNoParam('run name', req.params._id, next);
   library_info.find({RunInfo_name: req.params._id})
-    .then(docs => utils.returnDocs(docs, res, next, 'libraries for run'))
+    .then(docs => utils.returnDocs(docs, res, next))
     .catch(err => next(utils.generateError(500, err)));
 });
 
 // workflow_info
 // one workflow
 router.get('/workflow_info/:_id', function (req, res, next) {
-  utils.returnIfNoParam('workflow accession', req.params._id, next);
-  workflow_info.find({workflow_accession: req.params._id})
-    .then(docs => utils.returnDocs(docs, res, next, 'workflow'))
+  utils.returnIfNoParam('SeqWare accession', req.params._id, next);
+  workflow_info.find({sw_accession: req.params._id})
+    .then(docs => utils.returnDocs(docs, res, next))
     .catch(err => next(utils.generateError(500, err)));
 });
 
 // files per workflow
 router.get('/workflow_info/:_id/files', function (req, res, next) {
-  utils.returnIfNoParam('workflow accession', req.params._id, next);
+  utils.returnIfNoParam('SeqWare accession', req.params._id, next);
   file_info.find({WorkflowInfo_accession: req.params._id}, 'fileSWID file_path')
-    .then(docs => utils.returnDocs(docs, res, next, 'files for workflow'))
+    .then(docs => utils.returnDocs(docs, res, next))
     .catch(err => next(utils.generateError(500, err)));
 });
 
@@ -196,7 +209,7 @@ router.get('/graph_data/:_id', function (req, res, next) {
   utils.returnIfNoParam('IUS SWID', parseInt(req.params._id), next);
   const id = parseInt(req.params._id);
   graph_data.find({iusswid: id})
-    .then(docs => utils.returnDocs(docs, res, next, 'IUS SWID'))
+    .then(docs => utils.returnDocs(docs, res, next))
     .catch(err => next(utils.generateError(500, err)));
 });
 //========================================================
@@ -207,21 +220,21 @@ router.get('/run_timeframe_summary_running', function (req, res, next) {
 
 router.get('/run_timeframe_summary_running/:start/:end', function (req, res, next) {
   // TODO: add more validation for start and end times
-  utils.returnIfNoParam('start date', req.params.start, next);
-  utils.returnIfNoParam('end date', req.params.end, next);
-  const start_date = new Date (req.params.start);
-  const end_date = new Date (req.params.end);
+  const start_date = formatDateForMongo(req.params.start);
+  const end_date = formatDateForMongo(req.params.end);
+  utils.returnIfNoParam('start date', start_date, next);
+  utils.returnIfNoParam('end date', end_date, next);
   library_info.aggregate([
     {$match: { create_tstmp: {$gt: start_date, $lt: end_date} }},
-    {$unwind: {path:'$workflowinfo_accession', preserveNullAndEmptyArrays: true}},
+    {$unwind: {path:'$WorkflowInfo_accession', preserveNullAndEmptyArrays: true}},
     {$lookup: {
       from: 'WorkflowInfo',
-      localField: 'workflowinfo_accession',
+      localField: 'WorkflowInfo_accession',
       foreignField: 'sw_accession',
       as: 'workflows' }},
     {$unwind: {path:'$workflows', preserveNullAndEmptyArrays: true}},
     {$project: {
-      project_name: '$project_info_name',
+      project_name: '$ProjectInfo_name',
       workflow_name: '$workflows.workflow_name',
       if_running: {$cond: {if:{ $eq:['$workflows.status','running']},
         then: 1,
@@ -239,7 +252,7 @@ router.get('/run_timeframe_summary_running/:start/:end', function (req, res, nex
         project_name: '$_id.project_name',
         count: '$count'}} }}
   ])
-    .then(docs => utils.returnDocs(docs, res, next, 'running runs for given timeframe'))
+    .then(docs => utils.returnDocs(docs, res, next))
     .catch(err => next(utils.generateError(500, err)));
 });
 
@@ -248,17 +261,16 @@ router.get('/run_timeframe_summary_libraries', function (req, res, next) {
 });
 
 router.get('/run_timeframe_summary_libraries/:start/:end', function (req, res, next) {
-  // TODO: add more validation for start and end times
-  utils.returnIfNoParam('start date', req.params.start, next);
-  utils.returnIfNoParam('end date', req.params.end, next);
-  const start_date = new Date (req.params.start);
-  const end_date = new Date (req.params.end);
+  const start_date = formatDateForMongo(req.params.start);
+  const end_date = formatDateForMongo(req.params.end);
+  utils.returnIfNoParam('start date', start_date, next);
+  utils.returnIfNoParam('end date', end_date, next);
   library_info.aggregate([
     {$match: { create_tstmp: {$gt: start_date, $lt: end_date} }},
-    {$unwind: {path:'$workflowinfo_accession', preserveNullAndEmptyArrays: true}},
+    {$unwind: {path:'$WorkflowInfo_accession', preserveNullAndEmptyArrays: true}},
     {$lookup: {
       from: 'WorkflowInfo',
-      localField: 'workflowinfo_accession',
+      localField: 'WorkflowInfo_accession',
       foreignField: 'sw_accession',
       as: 'workflows' }},
     {$unwind: {path:'$workflows', preserveNullAndEmptyArrays: true}},
@@ -275,7 +287,7 @@ router.get('/run_timeframe_summary_libraries/:start/:end', function (req, res, n
         workflow_name: '$_id.workflow_name',
         libraries: '$libraries' }} }}
   ])
-    .then(docs => utils.returnDocs(docs, res, next, 'libraries for given timeframe'))
+    .then(docs => utils.returnDocs(docs, res, next))
     .catch(err => next(utils.generateError(500, err)));
 });
 
@@ -285,15 +297,15 @@ router.get('/run_timeframe_summary_pending', function (req, res, next) {
 
 router.get('/run_timeframe_summary_pending/:start/:end', function (req, res, next) {
   // TODO: add more validation for start and end times
-  utils.returnIfNoParam('start date', req.params.start, next);
-  utils.returnIfNoParam('end date', req.params.end, next);
-  const start_date = new Date (req.params.start);
-  const end_date = new Date (req.params.end);
+  const start_date = formatDateForMongo(req.params.start);
+  const end_date = formatDateForMongo(req.params.end);
+  utils.returnIfNoParam('start date', start_date, next);
+  utils.returnIfNoParam('end date', end_date, next);
   library_info.aggregate([ 
     {$match: { create_tstmp: {$gt: start_date, $lt: end_date} }},
     {$lookup: {
       from: 'RunInfo',
-      localField: 'run_info_name',
+      localField: 'RunInfo_name',
       foreignField: 'run_name',
       as: 'runinfo' }},
     {$unwind: {path:'$runinfo', preserveNullAndEmptyArrays: true}},
@@ -305,7 +317,7 @@ router.get('/run_timeframe_summary_pending/:start/:end', function (req, res, nex
       _id: '$run_info_name',
       library_count: {$sum: 1} }}
   ])
-    .then(docs => utils.returnDocs(docs, res, next, 'pending runs for given timeframe'))
+    .then(docs => utils.returnDocs(docs, res, next))
     .catch(err => next(utils.generateError(500, err)));
 });
 
@@ -316,11 +328,10 @@ router.get('/run_timeframe', function (req, res, next) {
 //per one run name
 // TODO: update documentation for this method. It's definitely not for one run name.
 router.get('/run_timeframe/:start/:end', function (req, res, next) {
-  // TODO: add more validation for start and end times
-  utils.returnIfNoParam('start date', req.params.start, next);
-  utils.returnIfNoParam('end date', req.params.end, next);
-  const start_date = new Date (req.params.start);
-  const end_date = new Date (req.params.end);
+  const start_date = formatDateForMongo(req.params.start);
+  const end_date = formatDateForMongo(req.params.end);
+  utils.returnIfNoParam('start date', start_date, next);
+  utils.returnIfNoParam('end date', end_date, next);
   library_info.aggregate([
     {$match: { create_tstmp: {$gt: start_date, $lt: end_date} }},
     {$group: {
@@ -390,7 +401,7 @@ router.get('/run_timeframe/:start/:end', function (req, res, next) {
       start_date: '$runinfo.start_tstmp',
       libraries: 1 }}
   ])
-    .then(docs => utils.returnDocs(docs, res, next, 'libraries for given timeframe'))
+    .then(docs => utils.returnDocs(docs, res, next))
     .catch(err => next(utils.generateError(500, err)));
 });
 
@@ -399,11 +410,11 @@ router.get('/project_runs/:_id', function (req, res, next) {
   utils.returnIfNoParam('project name(s)', req.params._id, next);
   const array = req.params._id.split(',');
   library_info.aggregate([
-    {$match: { project_info_name: {$in: array} }},
+    {$match: { ProjectInfo_name: {$in: array} }},
     {$group: {
-      _id: '$run_info_name',
-      unique_projects: {$addToSet: '$project_info_name'},
-      projects: {$push: {name:'$project_info_name'}} }},
+      _id: '$RunInfo_name',
+      unique_projects: {$addToSet: '$ProjectInfo_name'},
+      projects: {$push: {name:'$ProjectInfo_name'}} }},
     {$unwind: {path:'$unique_projects', preserveNullAndEmptyArrays: true}},
     {$unwind: {path:'$projects', preserveNullAndEmptyArrays: true}},
     {$group: {
@@ -426,7 +437,7 @@ router.get('/project_runs/:_id', function (req, res, next) {
       projects: 1,
       sequencing_status: '$runinfo.status' }}
   ])
-    .then(docs => utils.returnDocs(docs, res, next, 'runs for project(s)'))
+    .then(docs => utils.returnDocs(docs, res, next))
     .catch(err => next(utils.generateError(500, err)));
 });
 
@@ -435,33 +446,34 @@ router.get('/project_overview_summary', function (req, res, next) {
   next(utils.generateError(400, 'no project list given'));
 });
 
+// project activity within past week
 router.get('/project_overview_summary/:_id', function (req, res, next) {
   utils.returnIfNoParam('project name(s)', req.params._id, next);
   const array = req.params._id.split(',');
   const startDate = new Date();
   startDate.setDate(startDate.getDate()-7);
   library_info.aggregate([
-    { $match: { project_info_name: {$in: array} }},
-    { $unwind: {path: '$workflowinfo_accession', preserveNullAndEmptyArrays: true}},
+    { $match: { ProjectInfo_name: {$in: array} }},
+    { $unwind: {path: '$WorkflowInfo_accession', preserveNullAndEmptyArrays: true}},
     { $lookup: {
       from: 'WorkflowInfo',
-      localField: 'workflowinfo_accession',
+      localField: 'WorkflowInfo_accession',
       foreignField: 'sw_accession',
       as: 'workflows' }},
     { $unwind: {path: '$workflows', preserveNullAndEmptyArrays: true}},
     { $project: {
-      project_info_name: 1,
+      ProjectInfo_name: 1,
       status: '$workflows.status',
-      library_name: 1,
+      library_seqname: 1,
       workflow_name: '$workflows.workflow_name',
       end_tstmp: '$workflows.end_tstmp'}},
     { $match: {status: {$ne: null }}},
     { $match: {$or: [ {end_tstmp: {$gt: startDate }}, {status: 'running'} ]}},
     { $group: {
       _id: {
-        project_name: '$project_info_name',
+        project_name: '$ProjectInfo_name',
         status: '$status' },
-      libraries: {$addToSet: {name: '$library_name'}},
+      libraries: {$addToSet: {name: '$library_seqname'}},
       workflows: {$addToSet: {name: '$workflow_name'}}}},
     { $group: {
       _id: '$_id.status',
@@ -470,7 +482,7 @@ router.get('/project_overview_summary/:_id', function (req, res, next) {
         library_count: {$size: '$libraries'},
         workflow_count: {$size:'$workflows' } }} }}
   ])
-    .then(docs => utils.returnDocs(docs, res, next, 'summaries for project(s)'))
+    .then(docs => utils.returnDocs(docs, res, next))
     .catch(err => next(utils.generateError(500, err)));
 });
 
@@ -482,11 +494,11 @@ router.get('/project_overview_libraries/:_id', function (req, res, next) {
   utils.returnIfNoParam('project name(s)', req.params._id, next);
   const array = req.params._id.split(',');
   library_info.aggregate([
-    { $match: { project_info_name: {$in: array} }},
-    {$unwind: {path:'$workflowinfo_accession', preserveNullAndEmptyArrays: true}},
+    { $match: { ProjectInfo_name: {$in: array} }},
+    {$unwind: {path:'$WorkflowInfo_accession', preserveNullAndEmptyArrays: true}},
     {$lookup: {
       from: 'WorkflowInfo',
-      localField: 'workflowinfo_accession',
+      localField: 'WorkflowInfo_accession',
       foreignField: 'sw_accession',
       as: 'workflows' }},
     {$unwind: {path:'$workflows', preserveNullAndEmptyArrays: true}},
@@ -503,22 +515,24 @@ router.get('/project_overview_libraries/:_id', function (req, res, next) {
         workflow_name: '$_id.workflow_name',
         libraries: '$libraries' }} }}
   ])
-    .then(docs => utils.returnDocs(docs, res, next, 'libraries and workflows for project(s)'))
+    .then(docs => utils.returnDocs(docs, res, next))
     .catch(err => next(utils.generateError(500, err)));
 });
 
+// TODO: is this even necessary? We never use "Pending" run status anyway
 router.get('/project_overview_pending', function (req, res, next) {
   next(utils.generateError(400, 'no project list given'));
 });
 
+// TODO: is this even necessary? We never use "Pending" run status anyway
 router.get('/project_overview_pending/:_id', function (req, res, next) {
   utils.returnIfNoParam('project name(s)', req.params._id, next);
   const array = req.params._id.split(',');
   library_info.aggregate([
-    { $match: { project_info_name: {$in: array} }},
+    { $match: { ProjectInfo_name: {$in: array} }},
     {$lookup: {
       from: 'RunInfo',
-      localField: 'run_info_name',
+      localField: 'RunInfo_name',
       foreignField: 'run_name',
       as: 'runinfo' }},
     {$unwind: {path:'$runinfo', preserveNullAndEmptyArrays: true}},
@@ -530,7 +544,7 @@ router.get('/project_overview_pending/:_id', function (req, res, next) {
       _id: '$run_info_name',
       library_count: {$sum: 1} }}
   ])
-    .then(docs => utils.returnDocs(docs, res, next, 'pending runs for project(s)'))
+    .then(docs => utils.returnDocs(docs, res, next))
     .catch(err => next(utils.generateError(500, err)));
 });
 
@@ -539,7 +553,7 @@ router.get('/project_overview_pending/:_id', function (req, res, next) {
 router.get('/project_overview', function (req, res, next) {
   library_info.aggregate([
     {$group: {
-      _id: '$project_info_name',
+      _id: '$ProjectInfo_name',
       library_count: {$sum: 1},
       unique_donors: {$addToSet: '$library_head'},
       donors: {$push: {name:'$library_head'}} }},
@@ -571,7 +585,7 @@ router.get('/project_overview', function (req, res, next) {
       jira_url: '$urls.jira_url',
       wiki_url: '$urls.wiki_url' }}
   ])
-    .then(docs => utils.returnDocs(docs, res, next, 'project information'))
+    .then(docs => utils.returnDocs(docs, res, next))
     .catch(err => next(utils.generateError(500, err)));
 });
 
@@ -580,9 +594,9 @@ router.get('/project_overview/:_id', function (req, res, next) {
   utils.returnIfNoParam('project name(s)', req.params._id, next);
   const array = req.params._id.split(',');
   library_info.aggregate([
-    {$match: { project_info_name: {$in: array} }},
+    {$match: { ProjectInfo_name: {$in: array} }},
     {$group: {
-      _id: '$project_info_name',
+      _id: '$ProjectInfo_name',
       library_count: {$sum: 1},
       unique_donors: {$addToSet: '$library_head'},
       donors: {$push: {name:'$library_head'}} }},
@@ -614,7 +628,7 @@ router.get('/project_overview/:_id', function (req, res, next) {
       jira_url: '$urls.jira_url',
       wiki_url: '$urls.wiki_url' }}
   ])
-    .then(docs => utils.returnDocs(docs, res, next, 'project(s)'))
+    .then(docs => utils.returnDocs(docs, res, next))
     .catch(err => next(utils.generateError(500, err)));
 });
 
@@ -629,7 +643,7 @@ router.get('/run_workflows_summary/:_id', function (req, res, next) {
   library_info.aggregate([
     { $match: {RunInfo_name:req.params._id}},
     { $group: {
-      _id: run,
+      _id: '$RunInfo_name',
       projectSummary: {$addToSet: '$project_info_name'},
       librarySummary: {$addToSet: '$library_type'},
       tissueSummary: {$addToSet: '$tissue_type'},
@@ -702,7 +716,7 @@ router.get('/run_workflows_summary/:_id', function (req, res, next) {
       library_summary: 1,
       tissue_summary: 1 }}
   ])
-    .then(docs => utils.returnDocs(docs, res, next, 'workflows for run'))
+    .then(docs => utils.returnDocs(docs, res, next))
     .catch(err => next(utils.generateError(500, err)));
 });
 
@@ -712,29 +726,30 @@ router.get('/run_workflows', function (req, res, next) {
 });
 
 //per one run name-first 10
+// TODO: figure out why workflow_info is `null`
 router.get('/run_workflows/:_id', function (req, res, next) {
   utils.returnIfNoParam('run name', req.params._id, next);
   library_info.aggregate([
-    { $match: {run_info_name:req.params._id}},
+    { $match: {RunInfo_name:req.params._id}},
     { $group: {
-      _id: run,
+      _id: '$RunInfo_name',
       origin: {$push: '$$ROOT'} }},
     { $unwind: {path: '$origin', preserveNullAndEmptyArrays: true}},
-    { $unwind: {path: '$origin.workflowinfo_accession', preserveNullAndEmptyArrays: true}},
+    { $unwind: {path: '$origin.WorkflowInfo_accession', preserveNullAndEmptyArrays: true}},
     { $lookup: {
       from: 'WorkflowInfo',
-      localField: 'origin.workflowinfo_accession',
+      localField: 'origin.WorkflowInfo_accession',
       foreignField: 'sw_accession',
       as: 'workflows' }},
     { $unwind: {path: '$workflows', preserveNullAndEmptyArrays: true}},
     { $lookup: {
       from: 'FileInfo',
-      localField: 'origin.workflowinfo_accession',
-      foreignField: 'workflowinfo_accession',
+      localField: 'origin.WorkflowInfo_accession',
+      foreignField: 'WorkflowInfo_accession',
       as: 'files' }},
     { $unwind: {path: '$files', preserveNullAndEmptyArrays: true}}, 
     { $group: {
-      _id: { accession:'$origin.workflowinfo_accession', iusswid: '$origin.iusswid'},
+      _id: { accession:'$origin.WorkflowInfo_accession', iusswid: '$origin.iusswid'},
       files: {$first: '$files'},
       'fileSum': {$sum: 1},
       workflows: {$first: '$workflows'},
@@ -754,39 +769,40 @@ router.get('/run_workflows/:_id', function (req, res, next) {
       }} }},
     { $sort: {'lane': 1, 'libraries.library_name': 1}}
   ])
-    .then(docs => utils.returnDocs(docs, res, next, 'run workflows'))
+    .then(docs => utils.returnDocs(docs, res, next))
     .catch(err => next(utils.generateError(500, err)));
 });
 
 //workflows per one run - ten libraries at a time
-router.get('/run_workflows/:_id/:start', function (req, res, next) {
+// TODO: figure out why workflow_info is `null`
+router.get('/run_workflows/:_id/:libNum', function (req, res, next) {
   utils.returnIfNoParam('run name', req.params._id, next);
-  utils.returnIfNoParam('start time', parseInt(req.params.start), next);
-  req.params.start=parseInt(req.params.start);
+  utils.returnIfNoParam('libraries offset', parseInt(req.params.libNum), next);
+  req.params.libNum=parseInt(req.params.libNum);
   library_info.aggregate([
-    { $match: {run_info_name:req.params._id}},
+    { $match: {RunInfo_name:req.params._id}},
     { $group: {
-      _id: run,
+      _id: '$RunInfo_name',
       origin: {$push: '$$ROOT'} }},
     { $unwind: {path: '$origin', preserveNullAndEmptyArrays: true}},
     { $sort: {'origin.lane': 1, 'origin.library_name': 1}},
-    { $skip: req.params.start},
+    { $skip: req.params.libNum},
     { $limit: 10},
-    { $unwind: {path: '$origin.workflowinfo_accession', preserveNullAndEmptyArrays: true}},
+    { $unwind: {path: '$origin.WorkflowInfo_accession', preserveNullAndEmptyArrays: true}},
     { $lookup: {
       from: 'WorkflowInfo',
-      localField: 'origin.workflowinfo_accession',
+      localField: 'origin.WorkflowInfo_accession',
       foreignField: 'sw_accession',
       as: 'workflows' }},
     { $unwind: {path: '$workflows', preserveNullAndEmptyArrays: true}},
     { $lookup: {
       from: 'FileInfo',
-      localField: 'origin.workflowinfo_accession',
-      foreignField: 'workflowinfo_accession',
+      localField: 'origin.WorkflowInfo_accession',
+      foreignField: 'WorkflowInfo_accession',
       as: 'files' }},
     { $unwind: {path: '$files', preserveNullAndEmptyArrays: true}}, 
     { $group: {
-      _id: { accession:'$origin.workflowinfo_accession', iusswid: '$origin.iusswid'},
+      _id: { accession:'$origin.WorkflowInfo_accession', iusswid: '$origin.iusswid'},
       files: {$first: '$files'},
       'fileSum': {$sum: 1},
       workflows: {$first: '$workflows'},
@@ -806,15 +822,16 @@ router.get('/run_workflows/:_id/:start', function (req, res, next) {
       }} }},
     { $sort: {'lane': 1, 'libraries.library_name': 1}}
   ])
-    .then(docs => utils.returnDocs(docs, res, next, 'libraries for run'))
+    .then(docs => utils.returnDocs(docs, res, next))
     .catch(err => next(utils.generateError(500, err)));
 });
 
 //run summary page
+// TODO: add run end timestamp to RunInfo schema and data
 router.get('/run_list', function (req, res, next) {
   library_info.aggregate([
     {$group: {
-      _id: '$run_info_name',
+      _id: '$RunInfo_name',
       unique_projects: {$addToSet: '$library_head'},
       projects: {$push: {name:'$library_head'}} }},
     {$unwind: {path:'$unique_projects', preserveNullAndEmptyArrays: true}},
@@ -845,7 +862,7 @@ router.get('/run_list', function (req, res, next) {
       list: {$push: '$$ROOT'}
     }}
   ])
-    .then(docs => utils.returnDocs(docs, res, next, ' runs'))
+    .then(docs => utils.returnDocs(docs, res, next))
     .catch(err => next(utils.generateError(500, err)));
 });
 
@@ -856,10 +873,11 @@ router.get('/run_details', function (req, res, next) {
 });
 
 //per one run name
+// TODO: add collection QC??
 router.get('/run_details/:_id', function (req, res, next) {
   utils.returnIfNoParam('run name', req.params._id, next);
   library_info.aggregate([
-    { $match: {run_info_name:req.params._id}},
+    { $match: {RunInfo_name:req.params._id}},
     { $lookup: {
       from: 'QC',
       localField: 'iusswid',
@@ -877,9 +895,9 @@ router.get('/run_details/:_id', function (req, res, next) {
       'read_length_2': {$first: '$qc.read_length_2'},
       'lane': {$first: '$lane'},
       'barcode':{$first: '$barcode'},
-      'project_info': {$first: '$project_info_name'},
-      'run_info_name': {$first: '$run_info_name'},
-      'project_info_name': {$first: '$project_info_name'},
+      'project_info': {$first: '$ProjectInfo_name'},
+      'run_info_name': {$first: '$RunInfo_name'},
+      'project_info_name': {$first: '$ProjectInfo_name'},
       'library_name': {$first: '$library_name'},
       'qc': {$push: '$qc'}}},
     { $project: {
@@ -1019,7 +1037,7 @@ router.get('/run_details/:_id', function (req, res, next) {
         else: 'in progress'}},
       'lanes': 1}}
   ])
-    .then(docs => utils.returnDocs(docs, res, next, 'run'))
+    .then(docs => utils.returnDocs(docs, res, next))
     .catch(err => next(utils.generateError(500, err)));
 });
 
@@ -1033,7 +1051,7 @@ router.get('/run_report_info/:_id/', function (req, res, next) {
       'illumina_yield_sum': {$sum: '$lanes.illumina_yield'},
       'illumina_reads_sum': {$sum: '$lanes.illumina_reads'} }}
   ])
-    .then(docs => utils.returnDocs(docs, res, next, 'libraries for run'))
+    .then(docs => utils.returnDocs(docs, res, next))
     .catch(err => next(utils.generateError(500, err)));
 });
 
@@ -1044,6 +1062,7 @@ router.get('/run_details_split', function (req, res, next) {
 });
 
 //per one run name
+// TODO: fix weird numbers and nulls here
 router.get('/run_details_split/:_id/:one/:two', function (req, res, next) {
   utils.returnIfNoParam('run name', req.params._id, next);
   utils.returnIfNoParam('first set of lanes', parseInt(req.params.one), next);
@@ -1051,7 +1070,7 @@ router.get('/run_details_split/:_id/:one/:two', function (req, res, next) {
   const first=parseInt(req.params.one);
   const second=parseInt(req.params.two);
   library_info.aggregate([
-    { $match: {run_info_name:req.params._id}},
+    { $match: {RunInfo_name:req.params._id}},
     { $match: {lane: {$in: [first, second]}}},
     { $lookup: {
       from: 'QC',
@@ -1063,16 +1082,16 @@ router.get('/run_details_split/:_id/:one/:two', function (req, res, next) {
       _id: {                  //combines the reruns of the same iusswid
         iusswid: '$iusswid',
         lane: '$lane',
-        library_name:'$library_name'},
+        library_name:'$origin.library_name'},
       'yield': {$sum: '$qc.yield'},
       'reads': {$sum: '$qc.reads'},
       'read_length_1': {$first: '$qc.read_length_1'},
       'read_length_2': {$first: '$qc.read_length_2'},
       'lane': {$first: '$lane'},
       'barcode':{$first: '$barcode'},
-      'project_info': {$first: '$project_info_name'},
-      'run_info_name': {$first: '$run_info_name'},
-      'library_name': {$first: '$library_name'},
+      'project_info': {$first: '$origin.ProjectInfo_name'},
+      'run_info_name': {$first: '$origin.RunInfo_name'},
+      'library_name': {$first: '$origin.library_name'},
       'qc': {$push: '$qc'}}},
     { $project: {
       'has_qc': {$cond: {if:{ $eq:['$yield',0]},//for determining status
@@ -1142,7 +1161,7 @@ router.get('/run_details_split/:_id/:one/:two', function (req, res, next) {
       libraries: {$first: '$libraries'} }},
     { $lookup: {
       from: 'RunReportData',
-      localField: 'run_info_name',
+      localField: 'origin.RunInfo_name',
       foreignField: 'run_name',
       as: 'laneinfo' }},
     { $unwind: {path: '$laneinfo', preserveNullAndEmptyArrays: true}},
@@ -1191,7 +1210,7 @@ router.get('/run_details_split/:_id/:one/:two', function (req, res, next) {
       'read_length_2': {$first: '$read_length_2'},
     }}
   ])
-    .then(docs => utils.returnDocs(docs, res, next, 'details for run'))
+    .then(docs => utils.returnDocs(docs, res, next))
     .catch(err => next(utils.generateError(500, err)));
 });
 
@@ -1238,7 +1257,7 @@ router.get('/all_projects', function (req, res, next) {
       jira_url: '$urls.jira_url',
       wiki_url: '$urls.wiki_url' }}
   ])
-    .then(docs => utils.returnDocs(docs, res, next, 'projects'))
+    .then(docs => utils.returnDocs(docs, res, next))
     .catch(err => next(utils.generateError(500, err)));
 });
 
@@ -1248,18 +1267,19 @@ router.get('/project_status', function (req, res, next) {
 });
 
 //per one project name
+// TODO: should libraries.library_name really be the identity internal name?
 router.get('/project_status/:_id', function (req, res, next) {
   utils.returnIfNoParam('project name', req.params._id, next);
   library_info.aggregate([
-    {$match: {project_info_name: req.params._id }},
+    {$match: {ProjectInfo_name: req.params._id }},
     {$group: {
       _id: '$iusswid',
       origin: {$push: '$$ROOT'} }},
     {$unwind: {path:'$origin', preserveNullAndEmptyArrays: true}},
-    {$unwind: {path:'$origin.workflowinfo_accession', preserveNullAndEmptyArrays: true}},
+    {$unwind: {path:'$origin.WorkflowInfo_accession', preserveNullAndEmptyArrays: true}},
     {$lookup: {
       from: 'WorkflowInfo',
-      localField: 'origin.workflowinfo_accession',
+      localField: 'origin.WorkflowInfo_accession',
       foreignField: 'sw_accession',
       as: 'workflows' }},
     {$unwind: {path:'$workflows', preserveNullAndEmptyArrays: true}},
@@ -1278,11 +1298,11 @@ router.get('/project_status/:_id', function (req, res, next) {
         count: '$status_count'}},
       origin: {$first: '$origin'} }},
     {$group: {
-      _id: '$origin.donor_info_name',
+      _id: '$origin.DonorInfo_name',
       unique_tissues: {$addToSet: '$origin.tissue_type'},
       tissues: {$push: '$origin.tissue_type'},
       libraries: {$push: {
-        library_name: '$origin.donor_info_name',
+        library_name: '$origin.DonorInfo_name',
         library_type: '$origin.library_type',
         tissue_type: '$origin.tissue_type',
         tissue_origin: '$tissue_origin',
@@ -1320,7 +1340,7 @@ router.get('/project_status/:_id', function (req, res, next) {
       institute: '$donorinfo.institute',
       libraries: 1 }}
   ])
-    .then(docs => utils.returnDocs(docs, res, next, 'project details'))
+    .then(docs => utils.returnDocs(docs, res, next))
     .catch(err => next(utils.generateError(500, err)));
 });
 
@@ -1332,10 +1352,10 @@ router.get('/project_status_summary', function (req, res, next) {
 router.get('/project_status_summary/:_id', function (req, res, next) {
   utils.returnIfNoParam('project name', req.params._id, next);
   library_info.aggregate([
-    {$match: {project_info_name: req.params._id }},
+    {$match: {ProjectInfo_name: req.params._id }},
     {$group: {
       _id: '$library_head',
-      project_name: {$first: '$project_info_name'},
+      project_name: {$first: '$ProjectInfo_name'},
       donor_count: {$sum: 1} }},
     {$group: {
       _id: '$project_name',
@@ -1365,7 +1385,7 @@ router.get('/project_status_summary/:_id', function (req, res, next) {
       jira_url: '$urls.jira_url',
       wiki_url: '$urls.wiki_url',}}
   ])
-    .then(docs => utils.returnDocs(docs, res, next, 'project'))
+    .then(docs => utils.returnDocs(docs, res, next))
     .catch(err => next(utils.generateError(500, err)));
 });
 
@@ -1379,26 +1399,26 @@ router.get('/donor_workflows', function (req, res, next) {
 router.get('/donor_workflows/:_id', function (req, res, next) {
   utils.returnIfNoParam('donor name', req.params._id, next);
   library_info.aggregate([
-    { $match: {donor_info_name:req.params._id}},
+    { $match: {DonorInfo_name:req.params._id}},
     { $group: {
       _id: req.params._id,
       origin: {$push: '$$ROOT'} }},
     { $unwind: {path: '$origin', preserveNullAndEmptyArrays: true}},
-    { $unwind: {path: '$origin.workflowinfo_accession', preserveNullAndEmptyArrays: true}},
+    { $unwind: {path: '$origin.WorkflowInfo_accession', preserveNullAndEmptyArrays: true}},
     { $lookup: {
       from: 'WorkflowInfo',
-      localField: 'origin.workflowinfo_accession',
+      localField: 'origin.WorkflowInfo_accession',
       foreignField: 'sw_accession',
       as: 'workflows' }},
     { $unwind: {path: '$workflows', preserveNullAndEmptyArrays: true}},
     { $lookup: {
       from: 'FileInfo',
-      localField: 'origin.workflowinfo_accession',
-      foreignField: 'workflowinfo_accession',
+      localField: 'origin.WorkflowInfo_accession',
+      foreignField: 'WorkflowInfo_accession',
       as: 'files' }},
     { $unwind: {path: '$files', preserveNullAndEmptyArrays: true}}, 
     { $group: {
-      _id: { accession:'$origin.workflowinfo_accession', iusswid: '$origin.iusswid'},
+      _id: { accession:'$origin.WorkflowInfo_accession', iusswid: '$origin.iusswid'},
       files: {$first: '$files'},
       'fileSum': {$sum: 1},
       workflows: {$first: '$workflows'},
@@ -1408,7 +1428,7 @@ router.get('/donor_workflows/:_id', function (req, res, next) {
       library_name: {$first:'$origin.library_name'},
       lane: {$first: '$origin.lane'},
       barcode: {$first: '$origin.barcode'},
-      run_name: {$first: '$origin.run_info_name'}, 
+      run_name: {$first: '$origin.RunInfo_name'}, 
       workflow_count: {$sum: 1},
       workflows: {$push: { 
         'workflow_name': '$workflows.workflow_name',
@@ -1421,7 +1441,7 @@ router.get('/donor_workflows/:_id', function (req, res, next) {
       }} }},
     { $sort: {'lane': 1, 'libraries.library_name': 1}}
   ])
-    .then(docs => utils.returnDocs(docs, res, next, 'donor'))
+    .then(docs => utils.returnDocs(docs, res, next))
     .catch(err => next(utils.generateError(500, err)));
 });
 
@@ -1435,7 +1455,7 @@ router.get('/donor_workflows_summary', function (req, res, next) {
 router.get('/donor_workflows_summary/:_id', function (req, res, next) {
   utils.returnIfNoParam('donor name', req.params._id, next);
   library_info.aggregate([
-    { $match: {donor_info_name:req.params._id}},
+    { $match: {DonorInfo_name:req.params._id}},
     { $group: {
       _id: req.params._id,
       librarySummary: {$addToSet: '$library_type'},
@@ -1452,10 +1472,10 @@ router.get('/donor_workflows_summary/:_id', function (req, res, next) {
       tissueSum: {$cond: {if:{ $eq:['$tissueSummary','$origin.tissue_type']},
         then: 1,
         else: 0}},
-      run_name: '$origin.run_info_name',
+      run_name: '$origin.RunInfo_name',
       librarySummary: 1,
       skip: '$origin.skip',
-      project_info_name: '$origin.project_info_name',
+      project_info_name: '$origin.ProjectInfo_name',
       tissueSummary:1}},
     { $group: {
       _id: {
@@ -1512,7 +1532,7 @@ router.get('/donor_workflows_summary/:_id', function (req, res, next) {
       library_summary: 1,
       tissue_summary: 1 }}
   ])
-    .then(docs => utils.returnDocs(docs, res, next, 'workflows for donor'))
+    .then(docs => utils.returnDocs(docs, res, next))
     .catch(err => next(utils.generateError(500, err)));
 });
 
@@ -1526,7 +1546,7 @@ router.get('/donor_details', function (req, res, next) {
 router.get('/donor_details/:_id', function (req, res, next) {
   utils.returnIfNoParam('donor name', req.params._id, next);
   library_info.aggregate([
-    { $match: {donor_info_name:req.params._id}},
+    { $match: {DonorInfo_name:req.params._id}},
     { $lookup: {
       from: 'QC',
       localField: 'iusswid',
@@ -1535,8 +1555,8 @@ router.get('/donor_details/:_id', function (req, res, next) {
     { $unwind: {path: '$details', preserveNullAndEmptyArrays: true}},
     { $group: {
       _id: '$details.type',
-      donor_info_name: {$first: '$donor_info_name'},
-      project_info_name: {$first: '$project_info_name'},
+      donor_info_name: {$first: '$DonorInfo_name'},
+      project_info_name: {$first: '$ProjectInfo_name'},
       qc_table: {$push: {
         library_name: '$library_name',
         iusswid: '$iusswid',
@@ -1564,7 +1584,7 @@ router.get('/donor_details/:_id', function (req, res, next) {
         library_type: '$_id',
         qc_table: '$qc_table' }} }}
   ])
-    .then(docs => utils.returnDocs(docs, res, next, 'donor'))
+    .then(docs => utils.returnDocs(docs, res, next))
     .catch(err => next(utils.generateError(500, err)));
 });
 // ========================================================
@@ -1582,17 +1602,26 @@ const errorHandler = (err, req, res, next) => {
 };
 app.use(errorHandler);
 
-SwaggerExpress.create(swagger_config, function (err, swaggerExpress) {
-  if (err) { throw err; }
-  //swagger ui
-  swagger_app.use(SwaggerUi(swaggerExpress.runner.swagger));
-  // install middleware
-  swaggerExpress.register(swagger_app);
+// SwaggerExpress.create(swagger_config, function (err, swaggerExpress) {
+//   if (err) { throw err; }
+//   //swagger ui
+//   swagger_app.use(SwaggerUi(swaggerExpress.runner.swagger));
+//   // install middleware
+//   swaggerExpress.register(swagger_app);
 
-  const port = process.env.PORT || 10010;
-  swagger_app.listen(port, '0.0.0.0');
-});
+//   const port = process.env.PORT || 10010;
+//   swagger_app.listen(port, '0.0.0.0');
+// });
 
 // Start the server
-app.listen(port);
-console.log('Magic happens on port ' + port);
+module.exports = app;
+
+// set the port
+const port = process.env.PORT || 8060;
+app.set('port', port);
+const server = app.listen(app.get('port'), () => {
+  const host = server.address().address;
+  const port = server.address().port;
+
+  console.log('Listening at http://%s:%s', host, port);
+});

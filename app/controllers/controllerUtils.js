@@ -13,16 +13,8 @@ const generateError = function (statusCode, errorMessage) {
   return err;
 };
 
-const returnDocs = function (docs, res, next, message) {
-  if (typeof docs[0] == 'undefined') {
-    return notFound(docs, next, message);
-  } else {
-    return ok(docs, res, next);
-  }
-};
-
-const notFound = function (docs, next, message) {
-  next(generateError(404, (message ? message + ' '  : '') + 'not found'));
+const returnDocs = function (docs, res, next) {
+  return ok(docs, res, next);
 };
 
 const returnIfNoParam = function (paramName, param, next) {

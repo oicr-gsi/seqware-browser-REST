@@ -215,11 +215,10 @@ router.get('/graph_data/:_id', function (req, res, next) {
 //========================================================
 //run timeframe summaries
 router.get('/run_timeframe_summary_running', function (req, res, next) {
-  next(utils.generateError(400, 'no timeframe given'));
+  next(utils.generateError(400, 'please provide start date and end date (YYYY-MM-DD)'));
 });
 
 router.get('/run_timeframe_summary_running/:start/:end', function (req, res, next) {
-  // TODO: add more validation for start and end times
   const start_date = formatDateForMongo(req.params.start);
   const end_date = formatDateForMongo(req.params.end);
   utils.returnIfNoParam('start date', start_date, next);
@@ -257,7 +256,7 @@ router.get('/run_timeframe_summary_running/:start/:end', function (req, res, nex
 });
 
 router.get('/run_timeframe_summary_libraries', function (req, res, next) {
-  next(utils.generateError(400, 'no timeframe given'));
+  next(utils.generateError(400, 'please provide start date and end date (YYYY-MM-DD)'));
 });
 
 router.get('/run_timeframe_summary_libraries/:start/:end', function (req, res, next) {
@@ -292,11 +291,10 @@ router.get('/run_timeframe_summary_libraries/:start/:end', function (req, res, n
 });
 
 router.get('/run_timeframe_summary_pending', function (req, res, next) {
-  next(utils.generateError(400, 'no timeframe given'));
+  next(utils.generateError(400, 'please provide start date and end date (YYYY-MM-DD)'));
 });
 
 router.get('/run_timeframe_summary_pending/:start/:end', function (req, res, next) {
-  // TODO: add more validation for start and end times
   const start_date = formatDateForMongo(req.params.start);
   const end_date = formatDateForMongo(req.params.end);
   utils.returnIfNoParam('start date', start_date, next);
@@ -322,7 +320,7 @@ router.get('/run_timeframe_summary_pending/:start/:end', function (req, res, nex
 });
 
 router.get('/run_timeframe', function (req, res, next) {
-  next(utils.generateError(400, 'no timeframe given'));
+  next(utils.generateError(400, 'please provide start date and end date (YYYY-MM-DD)'));
 });
 
 //per one run name
@@ -443,7 +441,7 @@ router.get('/project_runs/:_id', function (req, res, next) {
 
 //project_summary
 router.get('/project_overview_summary', function (req, res, next) {
-  next(utils.generateError(400, 'no project list given'));
+  next(utils.generateError(400, 'please provide a comma-separated list of project names'));
 });
 
 // project activity within past week
@@ -487,7 +485,7 @@ router.get('/project_overview_summary/:_id', function (req, res, next) {
 });
 
 router.get('/project_overview_libraries', function (req, res, next) {
-  next(utils.generateError(400, 'no project list given'));
+  next(utils.generateError(400, 'please provide a comma-separated list of project names'));
 });
 
 router.get('/project_overview_libraries/:_id', function (req, res, next) {
@@ -521,7 +519,7 @@ router.get('/project_overview_libraries/:_id', function (req, res, next) {
 
 // TODO: is this even necessary? We never use "Pending" run status anyway
 router.get('/project_overview_pending', function (req, res, next) {
-  next(utils.generateError(400, 'no project list given'));
+  next(utils.generateError(400, 'please provide a comma-separated list of project names'));
 });
 
 // TODO: is this even necessary? We never use "Pending" run status anyway
@@ -634,7 +632,7 @@ router.get('/project_overview/:_id', function (req, res, next) {
 
 //run summary
 router.get('/run_workflows_summary', function (req, res, next) {
-  next(utils.generateError(400, 'no sequencer run name given'));
+  next(utils.generateError(400, 'please provide a run name'));
 });
 
 //per one run name
@@ -722,11 +720,10 @@ router.get('/run_workflows_summary/:_id', function (req, res, next) {
 
 //run workflows
 router.get('/run_workflows', function (req, res, next) {
-  next(utils.generateError(400, 'no sequencer run name given'));
+  next(utils.generateError(400, 'please provide a run name'));
 });
 
 //per one run name-first 10
-// TODO: figure out why workflow_info is `null`
 router.get('/run_workflows/:_id', function (req, res, next) {
   utils.returnIfNoParam('run name', req.params._id, next);
   library_info.aggregate([
@@ -774,7 +771,6 @@ router.get('/run_workflows/:_id', function (req, res, next) {
 });
 
 //workflows per one run - ten libraries at a time
-// TODO: figure out why workflow_info is `null`
 router.get('/run_workflows/:_id/:libNum', function (req, res, next) {
   utils.returnIfNoParam('run name', req.params._id, next);
   utils.returnIfNoParam('libraries offset', parseInt(req.params.libNum), next);
@@ -856,7 +852,7 @@ router.get('/run_list', function (req, res, next) {
       projects: 1,
       end_date: '$runinfo.end_tstmp',
       start_date: '$runinfo.start_tstmp' }},
-    {$sort: { end_date: -1}},
+    {$sort: { start_date: -1}},
     {$group: {
       _id: 0,
       list: {$push: '$$ROOT'}
@@ -867,9 +863,8 @@ router.get('/run_list', function (req, res, next) {
 });
 
 //run_details
-//if run name not given
 router.get('/run_details', function (req, res, next) {
-  next(utils.generateError(400, 'no sequencer run name given'));
+  next(utils.generateError(400, 'please provide a run name'));
 });
 
 //per one run name
@@ -1055,20 +1050,19 @@ router.get('/run_report_info/:_id/', function (req, res, next) {
     .catch(err => next(utils.generateError(500, err)));
 });
 
-//mongo cannot return this query whein the run has over 300 libraries
-//This one returns the summary and first two lanes, and the next query does the next 3 lanes at a time
+//mongo cannot return this query when the run has over 300 libraries
 router.get('/run_details_split', function (req, res, next) {
-  next(utils.generateError(400, 'no sequencer run name given'));
+  next(utils.generateError(400, 'please provide run name, first lane number, and second lane number'));
 });
 
 //per one run name
 // TODO: fix weird numbers and nulls here
 router.get('/run_details_split/:_id/:one/:two', function (req, res, next) {
-  utils.returnIfNoParam('run name', req.params._id, next);
-  utils.returnIfNoParam('first set of lanes', parseInt(req.params.one), next);
-  utils.returnIfNoParam('second set of lanes', parseInt(req.params.two), next);
   const first=parseInt(req.params.one);
   const second=parseInt(req.params.two);
+  utils.returnIfNoParam('run name', req.params._id, next);
+  utils.returnIfNoParam('first requested lane', first, next);
+  utils.returnIfNoParam('second requested lane', second, next);
   library_info.aggregate([
     { $match: {RunInfo_name:req.params._id}},
     { $match: {lane: {$in: [first, second]}}},
@@ -1089,9 +1083,9 @@ router.get('/run_details_split/:_id/:one/:two', function (req, res, next) {
       'read_length_2': {$first: '$qc.read_length_2'},
       'lane': {$first: '$lane'},
       'barcode':{$first: '$barcode'},
-      'project_info': {$first: '$origin.ProjectInfo_name'},
-      'run_info_name': {$first: '$origin.RunInfo_name'},
-      'library_name': {$first: '$origin.library_name'},
+      'project_info': {$first: '$ProjectInfo_name'},
+      'run_info_name': {$first: '$RunInfo_name'},
+      'library_name': {$first: '$library_name'},
       'qc': {$push: '$qc'}}},
     { $project: {
       'has_qc': {$cond: {if:{ $eq:['$yield',0]},//for determining status
@@ -1263,7 +1257,7 @@ router.get('/all_projects', function (req, res, next) {
 
 //project status
 router.get('/project_status', function (req, res, next) {
-  next(utils.generateError(400, 'no project name given'));
+  next(utils.generateError(400, 'please provide project name'));
 });
 
 //per one project name
@@ -1345,7 +1339,7 @@ router.get('/project_status/:_id', function (req, res, next) {
 });
 
 router.get('/project_status_summary', function (req, res, next) {
-  next(utils.generateError(400, 'no donor name given'));
+  next(utils.generateError(400, 'please provide project name'));
 });
 
 //per one project name
@@ -1392,7 +1386,7 @@ router.get('/project_status_summary/:_id', function (req, res, next) {
 //donor_workflows
 //if donor name not given
 router.get('/donor_workflows', function (req, res, next) {
-  next(utils.generateError(400, 'no donor name given'));
+  next(utils.generateError(400, 'please provide donor name'));
 });
 
 //per one donor name
@@ -1448,7 +1442,7 @@ router.get('/donor_workflows/:_id', function (req, res, next) {
 //donor_workflows summary
 //if donor name not given
 router.get('/donor_workflows_summary', function (req, res, next) {
-  next(utils.generateError(400, 'no donor name given'));
+  next(utils.generateError(400, 'please provide donor name'));
 });
 
 //per one donor name
@@ -1539,7 +1533,7 @@ router.get('/donor_workflows_summary/:_id', function (req, res, next) {
 //donor_details
 //if donor name not given
 router.get('/donor_details', function (req, res, next) {
-  next(utils.generateError(400, 'no donor name given'));
+  next(utils.generateError(400, 'please provide donor name'));
 });
 
 //per one run name
